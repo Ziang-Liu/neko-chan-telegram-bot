@@ -50,41 +50,47 @@ def zip_folder(path, output = None):
             image_path = os.path.join(path,image)
             os.remove(image_path)
 
-def start_download(url, console):
-    #获取请求头
+def start_download(url, console, address):
+    #获得headers
     send_url = "https://www.baidu.com"
-    agent_response = requests.head(send_url) #发送head请求返回agent
+    agent_response = requests.head(send_url)
     user_agent = agent_response.request.headers['User-Agent']
-    headers = {'User-Agent': user_agent} #这里的agent显示的是python/版本号
+    headers = {'User-Agent': user_agent}
+    #链接有效性
+    if "telegra.ph" not in url:
+        console.insert(tk.END, "***Wrong Link***\n")
+        return
     #获取图片url
-    requested_url = requests.get(url,headers=headers)
+    requested_url = requests.get(url, headers=headers)
     image_urls = get_pictures_urls(requested_url.text)
-    #获取本子名字
-    soup = BeautifulSoup(requested_url.text,'html.parser')
+    #获取title
+    soup = BeautifulSoup(requested_url.text, 'html.parser')
     manga_title = soup.find("title")
-    converted_title = re.sub(r'<title>|</title>|\*|\||\?|– Telegraph| |/|:', lambda x: {'<title>': '', '</title>': '', '*': '', '|': '', '?': '', '– Telegraph': '', ' ': '', '/': '∕', ':': '∶'}[x.group()], str(manga_title)) #正则规范本子标题
-    #创建并进入本子目录
-    script_path = os.path.abspath(__file__) #获取python文件的当前路径
-    folder_path = os.path.dirname(script_path)
-    target_path = folder_path + '\\' + converted_title
-    if not os.path.exists(target_path): #判断是否创建过目录
+    converted_title = re.sub(r'<title>|</title>|\*|\||\?|– Telegraph| |/|:', lambda x: {'<title>': '', '</title>': '', '*': '', '|': '', '?': '', '– Telegraph': '', ' ': '', '/': '∕', ':': '∶'}[x.group()], str(manga_title))
+    #路径有效性
+    if not os.path.isdir(address):
+        console.insert(tk.END, "***Wrong Path***\n")
+        return
+    #创建文件夹
+    os.chdir(address)
+    target_path = os.path.join(address, converted_title)
+    if not os.path.exists(target_path):
         os.mkdir(target_path)
-        os.chdir(target_path)
         console.insert(tk.END, "Directory created: " + target_path + "\n")
     else:
-        os.chdir(target_path)
         console.insert(tk.END, "Directory already exists: " + target_path + "\n")
-    #下载图片
-    console.insert(tk.END, "Start downloading...\n")
+    os.chdir(target_path)
+    #下载
+    console.insert(tk.END, "***Start downloading...***\n")
     threads = []
-    for i in range(len(image_urls)):
-        url='https://telegra.ph'+image_urls[i]
-        path="img"+str(i)+'.jpg'
-        t = threading.Thread(target=get_pictures, args=(url, path)) #引入多线程
+    for i, image_url in enumerate(image_urls):
+        url = 'https://telegra.ph' + image_url
+        path = f"img{i}.jpg"
+        t = threading.Thread(target=get_pictures, args=(url, path))
         threads.append(t)
         t.start()
     for t in threads:
         t.join()
-    #压缩文件夹再删除原目录文件
+    #压缩文件夹，删除零散图片
     zip_folder(target_path)
-    console.insert(tk.END, "Download Complete!\n")
+    console.insert(tk.END, "***Download Complete!***\n")
