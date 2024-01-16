@@ -26,9 +26,9 @@ async def check_and_download(queue_links):
 
 async def main():
     queue_links = queue.Queue()
-    read_task = asyncio.create_task(read_links(queue_links))
+    read_task = asyncio.create_task(read_links(queue_links)) # 链接逐行读进任务队列
     download_task = asyncio.create_task(check_and_download(queue_links))
-    subprocess_task = asyncio.create_task(run_subprocess())
+    subprocess_task = asyncio.create_task(run_subprocess()) # 为python-bot开一个子进程
     try:
         await asyncio.gather(subprocess_task, read_task, download_task)
     except asyncio.CancelledError:
@@ -38,7 +38,6 @@ async def main():
         await subprocess_task
         await read_task
         await download_task
-
 
 if __name__ == "__main__":
     asyncio.run(main())
