@@ -12,8 +12,7 @@ services:
       - 'PGID=1000'
       - 'TG_BOT_TOKEN='
       - 'TZ=Asia/Shanghai'
-      - 'SOCKS_HOST='
-      - 'SOCKS_PORT='
       - 'DOWNLOAD_THREADS='
+      - 'PROXY_URL='
     volumes:
       - /path/to/download:/download

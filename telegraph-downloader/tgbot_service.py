@@ -1,9 +1,9 @@
-import logging, os, socks, socket
+import logging, os
 from env import *
 from urlextract import URLExtract
 from telegram import Update
 from telegram.ext import (
-    Application,
+    ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -12,9 +12,8 @@ from telegram.ext import (
 )
 
 #load ".env"
+proxy_url = PROXY_URL
 bot_token = TGBOT_TOKEN
-host = HOST
-port = int(PORT)
 
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -83,13 +82,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def main() -> None:
 
-    #代理
-    socks.set_default_proxy(socks.SOCKS5, host, port)
-    socket.socket = socks.socksocket
-
     #启动bot
-    application = Application.builder().token(bot_token).build()
-
+    application = ApplicationBuilder().token(bot_token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
+    
     tgraph_komga_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_komga", start_tgraph_komga)], #接受'/tgraph_2_komga'指令
         states={

@@ -1,8 +1,6 @@
 bs4
 EbookLib
 pillow
-python-dotenv
 python_telegram_bot
-pysocks
 requests
 urlextract
