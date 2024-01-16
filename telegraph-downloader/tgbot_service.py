@@ -14,7 +14,7 @@ from telegram.ext import (
 #load ".env"
 bot_token = TGBOT_TOKEN
 host = HOST
-port = PORT
+port = int(PORT)
 
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
