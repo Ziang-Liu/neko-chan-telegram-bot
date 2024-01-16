@@ -1,3 +1,4 @@
+#currently conflict with docker
 import tkinter as tk
 from tkinter import scrolledtext
 import download_module  # 引入下载模块
@@ -7,7 +8,7 @@ def start_download():
     url = entry1.get()
     address = entry2.get()
     entry1.delete(0, tk.END)
-    download_thread = threading.Thread(target=download_module.start_download, args=(url, console, address))
+    download_thread = threading.Thread(target=download_module.start_download_zip, args=(url, console, address))
     download_thread.start()
     console.see(tk.END)
 
