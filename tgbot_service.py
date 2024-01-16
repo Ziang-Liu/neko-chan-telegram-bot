@@ -96,7 +96,7 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
+    '''
     tgraph_zip_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_zip",start_tgraph_zip)],
         states={
@@ -104,7 +104,7 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-    
+    '''
     application.add_handler(tgpraph_komga_handler)
     #application.add_handler(tgraph_zip_handler)
     # Run the bot until the user presses Ctrl-C
