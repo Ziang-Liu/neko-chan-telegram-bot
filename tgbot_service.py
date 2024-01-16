@@ -105,11 +105,7 @@ def main() -> None:
         fallbacks=[CommandHandler('cancel', cancel)],
     )
     '''
-<<<<<<< HEAD
     application.add_handler(tgraph_komga_handler)
-=======
-    application.add_handler(tgpraph_komga_handler)
->>>>>>> a40720d7fe62d5eabea34650d10e1050599cb54f
     #application.add_handler(tgraph_zip_handler)
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
