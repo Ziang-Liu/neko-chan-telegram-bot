@@ -1,18 +1,18 @@
-FROM python:3 AS basetelebot
+FROM python:3 AS builder
 
 WORKDIR /app
 
 COPY requirements.txt requirements.txt
 
-RUN apt-get update && apt-get upgrade -y  && \ 
-	apt-get install -y \
-	python3-pip && \
-	python3 -m pip install --upgrade pip  && \
-	pip3 install -r requirements.txt --upgrade && \
-	apt-get remove --purge -y build-essential  && \
-	apt-get autoclean -y && apt-get autoremove -y  && \
-	rm -rf /default /etc/default /tmp/* /etc/cont-init.d/* /var/lib/apt/lists/* /var/tmp/*
-FROM basetelebot
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && pip install --upgrade pip \
+    && pip install --prefix="/install" -r requirements.txt
+
+FROM python:3-alpine
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
 
 COPY /telegraph-downloader /app/
 
