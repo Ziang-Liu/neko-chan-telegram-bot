@@ -6,10 +6,11 @@ from env import *
 #env_var
 download_threads = DOWNLOAD_THREADS
 send_url = GET_HEADER_TEST_URL
+docker_download_location = DOWNLOAD_PATH
 
 def get_default_folder():
     current_directory = os.path.dirname(__file__)
-    new_folder_path = os.path.join(current_directory, "Download")
+    new_folder_path = os.path.join(current_directory, "download")
     os.makedirs(new_folder_path, exist_ok=True)
     return new_folder_path
 
@@ -62,7 +63,7 @@ def zip_folder(path, output = None):
         
         output_zip.close()
 
-def start_download_zip(url = None, console = None, address = get_default_folder()):
+def start_download_zip(url = None, console = None, address = docker_download_location):
     
     #获得headers
     agent_response = requests.head(send_url)

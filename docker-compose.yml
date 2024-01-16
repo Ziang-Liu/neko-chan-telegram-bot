@@ -3,8 +3,8 @@ version: '3'
 services:
 
   telethon_downloader:
-    image: darinirvana/telegraph-2-Komga-format
-    container_name: telegraph-2-Komga-format
+    image: darinirvana/telegraph-2-komga-format
+    container_name: telegraph-2-komga-format
     restart: unless-stopped
     network_mode: host
     environment:
