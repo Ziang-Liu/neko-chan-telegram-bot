@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+
+  telethon_downloader:
+    image: darinirvana/telegraph-2-Komga-format
+    container_name: telegraph-2-Komga-format
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - 'PUID=1000'
+      - 'PGID=1000'
+      - 'TG_BOT_TOKEN='
+      - 'TZ=Asia/Shanghai'
+      - 'SOCKS_HOST='
+      - 'SOCKS_PORT='
+      - 'DOWNLOAD_THREADS='
+    volumes:
+      - /path/to/download:/download

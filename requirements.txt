@@ -1,7 +1,8 @@
 bs4
-python-dotenv
-python_telegram_bot
-requests
-urlextract
 EbookLib
 pillow
+python-dotenv
+python_telegram_bot
+pysocks
+requests
+urlextract

@@ -1,5 +1,5 @@
-import logging, os
-from dotenv import load_dotenv
+import logging, os, socks, socket
+from env import *
 from urlextract import URLExtract
 from telegram import Update
 from telegram.ext import (
@@ -12,8 +12,9 @@ from telegram.ext import (
 )
 
 #load ".env"
-load_dotenv()
-bot_token = os.getenv('TGBOT_TOKEN')
+bot_token = TGBOT_TOKEN
+host = HOST
+port = PORT
 
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -81,7 +82,11 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 def main() -> None:
-    
+
+    #代理
+    socks.set_default_proxy(socks.SOCKS5, host, port)
+    socket.socket = socks.socksocket
+
     #启动bot
     application = Application.builder().token(bot_token).build()
 
