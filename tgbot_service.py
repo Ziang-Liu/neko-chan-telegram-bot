@@ -86,7 +86,7 @@ def main() -> None:
     #启动bot
     application = Application.builder().token(bot_token).build()
 
-    tgpraph_komga_handler = ConversationHandler(
+    tgraph_komga_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_komga", start_tgraph_komga)], #接受'/tgraph_2_komga'指令
         states={
             TELEGRAPH_KOMGA_LINK_RECEIVED: [
@@ -96,7 +96,7 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
+    '''
     tgraph_zip_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_zip",start_tgraph_zip)],
         states={
@@ -104,8 +104,8 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-    
-    application.add_handler(tgpraph_komga_handler)
+    '''
+    application.add_handler(tgraph_komga_handler)
     #application.add_handler(tgraph_zip_handler)
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
