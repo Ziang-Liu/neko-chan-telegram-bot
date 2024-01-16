@@ -1,6 +1,5 @@
 import logging, os
 from dotenv import load_dotenv
-from download_module import start_download
 from urlextract import URLExtract
 from telegram import Update
 from telegram.ext import (
