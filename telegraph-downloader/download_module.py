@@ -1,10 +1,17 @@
-import requests, re, os, zipfile, concurrent.futures
+import requests, re, os, zipfile, concurrent.futures, logging
 import tkinter as tk
 from bs4 import BeautifulSoup
 from env import *
 
+logger = logging.getLogger('custom_logger')
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(module)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+file_handler = logging.FileHandler('app.log')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
 #env_var
-download_threads = DOWNLOAD_THREADS
+download_threads = int(DOWNLOAD_THREADS)
 send_url = GET_HEADER_TEST_URL
 docker_download_location = DOWNLOAD_PATH
 
@@ -69,11 +76,15 @@ def start_download_zip(url = None, console = None, address = docker_download_loc
     agent_response = requests.head(send_url)
     user_agent = agent_response.request.headers['User-Agent']
     headers = {'User-Agent': user_agent}
+    logger.info(user_agent)
     
     #链接有效性
     if "telegra.ph" not in url:
+        '''
         if console is not None:
             console.insert(tk.END, "***Wrong Link***\n")
+        '''
+        logger.info('detect wrong telegraph links')
         return
     
     #获取图片url
@@ -91,35 +102,51 @@ def start_download_zip(url = None, console = None, address = docker_download_loc
     
     #路径有效性
     if not os.path.isdir(address):
+        '''
         console.insert(tk.END, "***Wrong Path***\n")
+        '''
         return
     #创建文件夹
     os.chdir(address)
     target_path = os.path.join(address, converted_title)
     if not os.path.exists(target_path):
         os.mkdir(target_path)
+        logger.info('Directory created: %s',target_path)
+        '''
         if console is not None:
             console.insert(tk.END, "Directory created: " + target_path + "\n")
+        '''
     else:
+        logger.info('Directory already exists, skip %s',target_path)
+        '''
         if console is not None:
             console.insert(tk.END, "Directory already exists: " + target_path + "\n")
+        '''
+    
     os.chdir(target_path)
     #下载
+    '''
     if console is not None:
         console.insert(tk.END, "***Start downloading...***\n")
+    '''
     with concurrent.futures.ThreadPoolExecutor(max_workers = download_threads) as executor:  # 限制并发线程数量
         future_to_url = {executor.submit(get_pictures, 'https://telegra.ph' + url, f'img{i}.jpg'): url for i, url in enumerate(image_urls)}
         for future in concurrent.futures.as_completed(future_to_url):
             url = future_to_url[future]
+            '''
             try:
                 future.result()
             except Exception as exc:
                 if console is not None:
                     print(f"Downloading {url} generated an exception: {exc}")
+            '''
     #压缩打包
     zip_folder(target_path) 
+    logger.info('Successfully download %s', manga_title)
+    '''
     if console is not None:
         console.insert(tk.END, "***Download Complete!***\n")
+    '''
 
 def start_download_epub(url = None, console = None, address = get_default_folder()):
     '''

@@ -23,10 +23,9 @@ logger = logging.getLogger(__name__)
 #定义状态值
 TASK_COMPLETE, TELEGRAPH_KOMGA_LINK_RECEIVED, TELEGRAPH_ZIP_LINK_RECEIVED = range(3)
 
-#接受"/telegraph"执行
 async def start_tgraph_komga(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text('Send me messages contain telegraph links, then use /complete to stop.')
-    
+    logger.info('user triggered /tgraph_2_komga command')
     return TELEGRAPH_KOMGA_LINK_RECEIVED
 
 async def start_tgraph_zip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -46,6 +45,7 @@ async def telegraph_komga_link_received(update: Update, context: ContextTypes.DE
     with open(os.path.join(current_directory,'temp_file'), "a", encoding='utf-8') as file:
         for url in telegraph_urls:
             file.write(url + '\n')
+        logger.info('temp file created')
     
     await update.message.reply_text('Link received')
     
