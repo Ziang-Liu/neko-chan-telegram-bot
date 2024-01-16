@@ -1,0 +1,7 @@
+bs4
+python-dotenv
+python_telegram_bot
+requests
+urlextract
+EbookLib
+pillow

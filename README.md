@@ -6,5 +6,5 @@ Since the latest release of [tachiyomi](https://github.com/tachiyomiorg/tachiyom
 ensure bs4 & request are installed if you directly run the python file
 
 ## Features plan
-- [ ] Integrating this functionality into a Telegram bot.
+- [x] Integrating this functionality into a Telegram bot.
 - [ ] Create a Docker container capable of running on a server.
