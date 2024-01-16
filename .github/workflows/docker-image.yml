@@ -26,4 +26,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: darinirvana/telegraph-2-Komga-format:latest
+          tags: darinirvana/telegraph-2-komga-format:latest
