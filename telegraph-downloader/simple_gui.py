@@ -2,15 +2,15 @@ import tkinter as tk
 from tkinter import scrolledtext
 import download_module, threading
 
-def start_download():
+def start():
     url = entry1.get()
     address = entry2.get()
     entry1.delete(0, tk.END)
-    download_thread = threading.Thread(target=download_module.start_download_zip, args=(url, address))
+    download_thread = threading.Thread(target=download_module.start_download, args=(url, address))
     download_thread.start()
 
 def on_enter_pressed(events):
-    start_download()
+    start()
 
 # 主窗口
 window = tk.Tk()
@@ -26,7 +26,7 @@ label2 = tk.Label(input_frame, text="Folder location:")
 label2.grid(row=1, column=0, sticky="w")
 entry2 = tk.Entry(input_frame, width=40)
 entry2.grid(row=1, column=1, padx=10, sticky="we")
-button = tk.Button(input_frame, text="Start Download", command=start_download)
+button = tk.Button(input_frame, text="Start Download", command=start)
 button.grid(row=2, column=0, columnspan=2, pady=10)
 entry1.bind('<Return>', on_enter_pressed)
 entry2.bind('<Return>', on_enter_pressed)

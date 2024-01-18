@@ -1,6 +1,5 @@
 bs4
 EbookLib
-pillow
 python_telegram_bot
 requests
 urlextract
