@@ -130,11 +130,7 @@ def main() -> None:
     #application.add_handler(tgraph_epub_handler)
     #application.add_error_handler(callback = cancel, block = True)
     # Run the bot until the user presses Ctrl-C
-    try:
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
-    except Exception as e:
-        logger.warning('BOT SERVICE: Timeout, Retrying in 5 seconds...')
-        time.sleep(5)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
     if __name__ == "__main__":
         main()
