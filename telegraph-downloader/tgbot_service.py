@@ -35,7 +35,7 @@ async def telegraph_komga_link_received(update: Update, context: ContextTypes.DE
         with open(os.path.join(current_directory,'temp_komga_link'), "a", encoding='utf-8') as file:
             for url in telegraph_urls:
                 file.write(url + '\n')
-                logger.info(f"Komga: {url} is added to 'temp_komga_link'")
+                logger.info("Komga: {} is added to 'temp_komga_link'".format(url))
         await update.message.reply_text('KOMGA: Telegraph link received')
     
     return TELEGRAPH_KOMGA_LINK_RECEIVED
@@ -66,7 +66,7 @@ async def telegraph_epub_link_received(update: Update, context: ContextTypes.DEF
         with open(os.path.join(current_directory,'epub_link'), "w", encoding='utf-8') as file:
             for url in telegraph_urls:
                 file.write(url)
-                logger.info(f"Epub: {url} is added to 'epub_link'")
+                logger.info("Epub: {} is added to 'epub_link'".format(url))
         await update.message.reply_text('EPUB: Telegraph link received')
 
     return TELEGRAPH_EPUB_LINK_RECEIVED
