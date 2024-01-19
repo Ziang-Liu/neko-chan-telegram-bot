@@ -98,8 +98,8 @@ def create_epub(manga_title, picpath, epubpath = docker_download_location) -> st
         manga.add_item(img)
 
         # 创建包含图片的 HTML 页面并添加到电子书中
-        html_content = f"<html><body><img src='{image_file}'></body></html>".encode('utf8')
-        html = epub.EpubHtml(title=f"Image {i+1}", file_name=f"image_{i+1}.xhtml", content=html_content)
+        html_content = "<html><body><img src='{}'></body></html>".format(image_file).encode('utf8')
+        html = epub.EpubHtml(title="Image {}".format(i+1), file_name="image_{}.xhtml".format(i+1), content=html_content)
         manga.add_item(html)
         manga.spine.append(html)  # 将页面添加到书脊
         manga.toc.append(epub.Link(html.file_name, html.title, ''))  # 将页面添加到目录
@@ -155,7 +155,10 @@ def start_download(url=None, address=docker_download_location, isepub=False):
     # 多线程下载图片
     os.chdir(target_path)
     with concurrent.futures.ThreadPoolExecutor(max_workers=download_threads) as executor:  # 限制并发线程数量
-        future_to_url = {executor.submit(get_pictures, 'https://telegra.ph' + url, f'img{i}.jpg'): url for i, url in enumerate(image_urls)}
+        future_to_url = {}
+        for i, url in enumerate(image_urls):
+            future = executor.submit(get_pictures, 'https://telegra.ph' + url, 'img{}.jpg'.format(i))
+            future_to_url[future] = url
         for future in concurrent.futures.as_completed(future_to_url):
             url = future_to_url[future]
 
