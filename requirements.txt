@@ -1,5 +1,5 @@
 bs4
 EbookLib
 python_telegram_bot
-requests==2.24.0
+requests
 urlextract

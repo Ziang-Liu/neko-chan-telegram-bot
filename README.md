@@ -22,9 +22,8 @@ epub_complete - Finish "epub_2_komga" command
 ## Features plan
 - [x] Integrating this functionality into a Telegram bot.
 - [x] Create a Docker container capable of running on a server.
-- [x] Support epub upload.
+- [ ] Support epub upload.
 
 ## Known Problems
-1. Bot can handle only one single link of epub uploading currently.
-2. If network timeout occurs, the service will have a force quit.
-3. The latest downloaded folder will be in used and can not be moved.
+1. If network timeout occurs, the service will have a force quit.
+2. The latest downloaded folder will be in used and can not be moved.

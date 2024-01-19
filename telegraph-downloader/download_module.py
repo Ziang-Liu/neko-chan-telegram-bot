@@ -1,5 +1,5 @@
 import requests, re, os, zipfile, concurrent.futures
-from ebooklib import epub
+#from ebooklib import epub
 from logger import logger
 from bs4 import BeautifulSoup
 from env import *
@@ -65,7 +65,7 @@ def zip_folder(path, output=None) -> str:
 
 def extract_number(filename):
     return int(re.search(r'\d+', filename).group())
-
+'''
 def create_epub(manga_title, picpath, epubpath = docker_download_location) -> str:
     logger.info('Epub: Creating EPUB for: %s', manga_title)
     
@@ -112,7 +112,7 @@ def create_epub(manga_title, picpath, epubpath = docker_download_location) -> st
     epub_file_name = manga_title + '.epub'  # 设置 EPUB 文件名
     epub.write_epub(epub_file_name, manga, {})  # 写入 EPUB 文件
     logger.info('Epub: EPUB creation complete for: %s', manga_title)
-
+'''
 def start_download(url=None, address=docker_download_location, isepub=False):
     # 获取用户代理信息
     agent_response = requests.head(send_url)
@@ -166,12 +166,13 @@ def start_download(url=None, address=docker_download_location, isepub=False):
     accumulated_target_path = []
     if isepub == False:
         zip_folder(target_path)  # 如果不是创建 EPUB，则将内容打包为ZIP文件
+    '''
     else:
         create_epub(converted_title, target_path)  # 如果需要创建 EPUB，则调用create_epub函数
         try:
             [os.remove(item) for item in accumulated_target_path]
         except:
             accumulated_target_path.append(target_path)
-
+    '''
 
     logger.info('Download module: Successfully download %s', converted_title)

@@ -50,6 +50,7 @@ async def task_komga_complete(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     return TASK_KOMGA_COMPLETE
 #<-telegraph message logic end
+'''
 #->epub message logic start
 async def start_tgraph_epub(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("Epub: '/tgraph_2_epub' trigered")
@@ -87,6 +88,7 @@ async def task_epub_complete(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
     return TASK_EPUB_COMPLETE
 #<-epub message logic end
+'''
 #->fallback handler start
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("END: Conversation canceled or Fallback is triggered.")
@@ -110,7 +112,7 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
+    '''
     tgraph_epub_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_epub", start_tgraph_epub)], # >>接受 /tgraph_2_epub
         states={
@@ -122,9 +124,9 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
-
+    '''
     application.add_handler(tgraph_komga_handler)
-    application.add_handler(tgraph_epub_handler)
+    #application.add_handler(tgraph_epub_handler)
     #application.add_error_handler(callback = cancel, block = True)
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
