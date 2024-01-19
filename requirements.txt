@@ -3,4 +3,3 @@ EbookLib
 python_telegram_bot
 requests
 urlextract
-lxml == 4.2.5
