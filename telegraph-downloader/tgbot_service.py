@@ -133,7 +133,8 @@ def main() -> None:
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
     except Exception:
-        logger.error('BOT SERVICE: Timeout encountered, exit.')
+        logger.error('BOT SERVICE: Unexpected timeout error, quiting...')
+        return
 
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
