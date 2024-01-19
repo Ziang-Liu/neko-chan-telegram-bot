@@ -16,7 +16,7 @@ COPY --from=builder /install /usr/local
 
 RUN apk add --no-cache libstdc++ \
     && apk add --no-cache --virtual .build-deps build-base \
-    && pip install --no-cache-dir requests
+    && apk add --no-cache --virtual .py-rundeps $(scanelf --needed --nobanner /usr/local/lib/python3.5/site-packages | awk '{ gsub(/,/, "\nso:", \$2); print "so:" \$2 }' | sort -u | xargs)
 
 COPY /telegraph-downloader /app/
 
@@ -25,3 +25,4 @@ RUN chmod 777 /app/tgbot_main.py
 VOLUME /download
 
 CMD ["python3", "/app/tgbot_main.py"]
+
