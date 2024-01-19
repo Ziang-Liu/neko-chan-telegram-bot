@@ -136,5 +136,5 @@ def main() -> None:
         logger.error('BOT SERVICE: Unexpected timeout error, quiting...')
         return
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()
