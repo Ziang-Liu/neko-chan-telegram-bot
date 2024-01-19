@@ -15,17 +15,20 @@ async def read_and_download_link(queue_links, filename, isepub=False):
             with open(filename, "r", encoding='utf-8') as file:
                 for link in file:
                     queue_links.put(link.strip())  # 将链接加入队列
-            os.remove(filename)  # 删除临时文件
             logger.info(f'Main: Read {filename} and added links to the queue')
 
         if not queue_links.empty():
+            try:
+                os.remove(filename)  # 删除临时文件
+            except:
+                pass
             link = queue_links.get()  # 获取队列链接
             download_task = start_download(link, isepub=isepub)
             if download_task:
                 await download_task  # 等待下载任务完成
                 logger.info(f'Main: Downloaded: {link}')
         
-        await asyncio.sleep(3)  # 暂停3秒
+        await asyncio.sleep(1)  # 暂停1秒
 
 async def main():
     komga_queue_link = queue.Queue()  # 创建 Komga 链接队列

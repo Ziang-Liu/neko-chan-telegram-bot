@@ -1,4 +1,4 @@
-import os
+import os, time
 from env import *
 from logger import logger
 from urlextract import URLExtract
@@ -35,7 +35,7 @@ async def telegraph_komga_link_received(update: Update, context: ContextTypes.DE
         with open(os.path.join(current_directory,'temp_komga_link'), "a", encoding='utf-8') as file:
             for url in telegraph_urls:
                 file.write(url + '\n')
-                logger.info("Komga: {} is added to 'temp_komga_link'".format(url))
+                logger.info(f"Komga: {url} is added to 'temp_komga_link'")
         await update.message.reply_text('KOMGA: Telegraph link received')
     
     return TELEGRAPH_KOMGA_LINK_RECEIVED
@@ -130,7 +130,11 @@ def main() -> None:
     #application.add_handler(tgraph_epub_handler)
     #application.add_error_handler(callback = cancel, block = True)
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        logger.warning('BOT SERVICE: Timeout, Retrying in 5 seconds...')
+        time.sleep(5)
 
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
