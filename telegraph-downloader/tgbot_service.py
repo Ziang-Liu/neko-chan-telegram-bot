@@ -20,13 +20,13 @@ download_path = DOWNLOAD_PATH
 TELEGRAPH_EPUB_LINK_RECEIVED, TELEGRAPH_KOMGA_LINK_RECEIVED, TASK_KOMGA_COMPLETE, TASK_EPUB_COMPLETE = range(4)
 #->telegraph message logic start
 async def start_tgraph_komga(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text('Send me messages contain telegraph links. If you want to stop, use /komga_complete')
-    logger.info("Komga: '/tgraph_2_komga' trigered")
+    await update.message.reply_text('Send me messages contain telegraph links.\nUse /komga_complete to stop.')
+    logger.info("BOT SERVICE(Komga): Start Telegraph to Komga task.")
     return TELEGRAPH_KOMGA_LINK_RECEIVED
 ##########↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##########################################################
 async def telegraph_komga_link_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = update.message.text_markdown
-    logger.info("Komga: Receive message %s", message)
+    logger.info("BOT SERVICE(Message): Receive message %s", message)
     urls = URLExtract().find_urls(message) # 提取消息包含的所有链接
     telegraph_urls = [url for url in urls if "telegra.ph" in url] # 筛选出 telegraph 链接
     # 把链接写入 temp_file
@@ -35,18 +35,18 @@ async def telegraph_komga_link_received(update: Update, context: ContextTypes.DE
         with open(os.path.join(current_directory,'temp_komga_link'), "a", encoding='utf-8') as file:
             for url in telegraph_urls:
                 file.write(url + '\n')
-                logger.info(f"Komga: {url} is added to 'temp_komga_link'")
-        await update.message.reply_text('KOMGA: Telegraph link received')
+                logger.info(f"BOT SERVICE(Komga): {url} is added.")
+        await update.message.reply_text('Link received.')
     
     return TELEGRAPH_KOMGA_LINK_RECEIVED
 
 async def task_komga_complete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info("Komga: User end func telegraph_link_received()")
+    logger.info("BOT SERVICE(Komga): User finished sending links.")
     if os.path.exists(os.path.join(os.path.dirname(__file__), "temp_komga_link")):
         await update.message.reply_text('Links are collected and will be downloaded to your server.')
         os.rename('temp_komga_link', 'komga_link')
     else:
-        await update.message.reply_text('KOMGA: No valid links provided.')
+        await update.message.reply_text('No valid links provided.')
 
     #return TASK_KOMGA_COMPLETE
     return ConversationHandler.END
@@ -92,7 +92,7 @@ async def task_epub_complete(update: Update, context: ContextTypes.DEFAULT_TYPE)
 '''
 #->fallback handler start
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info("END: Conversation canceled or Fallback is triggered.")
+    logger.info("BOT SERVICE: Conversation canceled or Fallback is triggered.")
     
     return ConversationHandler.END
 #<-fallback handler end
@@ -130,7 +130,9 @@ def main() -> None:
     #application.add_handler(tgraph_epub_handler)
     #application.add_error_handler(callback = cancel, block = True)
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-    if __name__ == "__main__":
-        main()
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception:
+        logger.error('BOT SERVICE: Timeout encountered, exit.')
+if __name__ == "__main__":
+    main()

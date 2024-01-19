@@ -45,10 +45,17 @@ def get_pictures_urls(text) -> str:
     
     return urls
 
+def del_images(path,file_list):
+    for image in file_list:  # 删除原始文件夹中除压缩包之外的.jpg
+        if ".jpg" in image:
+            image_path = os.path.join(path, image)
+            os.remove(image_path)
+
 def zip_folder(path, output=None) -> str:
     file_list = os.listdir(path)  # 获取文件夹中的文件列表
     output = output or os.path.basename(path) + '.zip'  # 压缩包的文件名，默认为文件夹名加上.zip后缀
     if os.path.exists(output):  # 如果压缩包已经存在，则返回
+        del_images(path,file_list)
         return
     
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as output_zip:
@@ -57,11 +64,8 @@ def zip_folder(path, output=None) -> str:
             for filename in files:
                 if ".jpg" in filename:  # 只压缩.jpg，避免压缩其他类型的文件
                     output_zip.write(os.path.join(root, filename), relative_root + filename)
-        for image in file_list:  # 删除原始文件夹中除压缩包之外的.jpg
-            if ".jpg" in image:
-                image_path = os.path.join(path, image)
-                os.remove(image_path)
         output_zip.close()
+    del_images(path,file_list)
 
 def extract_number(filename):
     return int(re.search(r'\d+', filename).group())
@@ -148,9 +152,9 @@ def start_download(url=None, address=docker_download_location, isepub=False):
     
     if not os.path.exists(target_path):  # 如果路径不存在，则创建新路径
         os.mkdir(target_path)
-        logger.info('Download module: Directory created: %s', target_path)
+        logger.info('DOWNLOAD MODULE: Directory created: %s', target_path)
     else:
-        logger.info('Download module: Directory already exists, skip %s', target_path)
+        logger.info('DOWNLOAD MODULE: Directory already exists. Skiping...')
 
     # 多线程下载图片
     os.chdir(target_path)
@@ -172,4 +176,4 @@ def start_download(url=None, address=docker_download_location, isepub=False):
             accumulated_target_path.append(target_path)
     '''
 
-    logger.info('Download module: Successfully download %s', converted_title)
+    logger.info('DOWNLOAD MODULE: Successfully download %s', converted_title)
