@@ -1,4 +1,4 @@
-import requests, re, os, zipfile, concurrent.futures
+import requests, re, os, zipfile, concurrent.futures, time
 #from ebooklib import epub
 from logger import logger
 from bs4 import BeautifulSoup
@@ -45,10 +45,17 @@ def get_pictures_urls(text) -> str:
     
     return urls
 
+def del_images(path,file_list):
+    for image in file_list:  # 删除原始文件夹中除压缩包之外的.jpg
+        if ".jpg" in image:
+            image_path = os.path.join(path, image)
+            os.remove(image_path)
+
 def zip_folder(path, output=None) -> str:
     file_list = os.listdir(path)  # 获取文件夹中的文件列表
     output = output or os.path.basename(path) + '.zip'  # 压缩包的文件名，默认为文件夹名加上.zip后缀
     if os.path.exists(output):  # 如果压缩包已经存在，则返回
+        del_images(path,file_list)
         return
     
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as output_zip:
@@ -57,11 +64,8 @@ def zip_folder(path, output=None) -> str:
             for filename in files:
                 if ".jpg" in filename:  # 只压缩.jpg，避免压缩其他类型的文件
                     output_zip.write(os.path.join(root, filename), relative_root + filename)
-        for image in file_list:  # 删除原始文件夹中除压缩包之外的.jpg
-            if ".jpg" in image:
-                image_path = os.path.join(path, image)
-                os.remove(image_path)
         output_zip.close()
+    del_images(path,file_list)
 
 def extract_number(filename):
     return int(re.search(r'\d+', filename).group())
@@ -124,18 +128,23 @@ def start_download(url=None, address=docker_download_location, isepub=False):
         logger.warning('Detect wrong telegraph links %s', url)
         return
 
-    # 获取图片URL列表
-    requested_url = requests.get(url, headers=headers)
-    image_urls = get_pictures_urls(requested_url.text)
-
-    # 获取标题
-    soup = BeautifulSoup(requested_url.text, 'html.parser')
-    manga_title = soup.find("title")
-    converted_title = re.sub(
-        r'<title>|</title>|\*|\||\?|– Telegraph| |/|:', 
-        lambda x: {'<title>': '', '</title>': '', '*': '', '|': '', '?': '', '– Telegraph': '', ' ': '', '/': '∕', ':': '∶'}[x.group()],
-        str(manga_title)
-    )
+    try:
+        # 获取图片URL列表
+        requested_url = requests.get(url, headers=headers)
+        image_urls = get_pictures_urls(requested_url.text)
+        
+        # 获取标题
+        soup = BeautifulSoup(requested_url.text, 'html.parser')
+        manga_title = soup.find("title")
+        converted_title = re.sub(
+            r'<title>|</title>|\*|\||\?|– Telegraph| |/|:', 
+            lambda x: {'<title>': '', '</title>': '', '*': '', '|': '', '?': '', '– Telegraph': '', ' ': '', '/': '∕', ':': '∶'}[x.group()],
+            str(manga_title)
+        )
+    except Exception:
+        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying in 5 seconds...')
+        time.sleep(5)
+        start_download(url, address, isepub)
 
     # 检查路径有效性
     if not os.path.isdir(address):
@@ -148,16 +157,21 @@ def start_download(url=None, address=docker_download_location, isepub=False):
     
     if not os.path.exists(target_path):  # 如果路径不存在，则创建新路径
         os.mkdir(target_path)
-        logger.info('Download module: Directory created: %s', target_path)
+        logger.info('DOWNLOAD MODULE: Directory created: %s', target_path)
     else:
-        logger.info('Download module: Directory already exists, skip %s', target_path)
+        logger.info('DOWNLOAD MODULE: Directory already exists. Skiping...')
 
     # 多线程下载图片
     os.chdir(target_path)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=download_threads) as executor:  # 限制并发线程数量
-        future_to_url = {executor.submit(get_pictures, 'https://telegra.ph' + url, f'img{i}.jpg'): url for i, url in enumerate(image_urls)}
-        for future in concurrent.futures.as_completed(future_to_url):
-            url = future_to_url[future]
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=download_threads) as executor:  # 限制并发线程数量
+            future_to_url = {executor.submit(get_pictures, 'https://telegra.ph' + url, f'img{i}.jpg'): url for i, url in enumerate(image_urls)}
+            for future in concurrent.futures.as_completed(future_to_url):
+                url = future_to_url[future]
+    except Exception:
+        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying in 5 seconds...')
+        time.sleep(5)
+        start_download(url, address, isepub)
 
     # 打包下载内容
     #accumulated_target_path = []
@@ -172,4 +186,4 @@ def start_download(url=None, address=docker_download_location, isepub=False):
             accumulated_target_path.append(target_path)
     '''
 
-    logger.info('Download module: Successfully download %s', converted_title)
+    logger.info('DOWNLOAD MODULE: Successfully download %s', converted_title)
