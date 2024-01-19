@@ -11,6 +11,7 @@ except (ValueError, TypeError):
     download_threads = 8 # 默认多线程为 8
 send_url = GET_HEADER_TEST_URL
 docker_download_location = DOWNLOAD_PATH
+os.environ['http_proxy'] = PROXY_URL
 
 def get_default_folder():
     current_directory = os.path.dirname(__file__)
