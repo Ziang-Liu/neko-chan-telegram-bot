@@ -48,7 +48,8 @@ async def task_komga_complete(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await update.message.reply_text('KOMGA: No valid links provided.')
 
-    return TASK_KOMGA_COMPLETE
+    #return TASK_KOMGA_COMPLETE
+    return ConversationHandler.END
 #<-telegraph message logic end
 '''
 #->epub message logic start
@@ -108,7 +109,7 @@ def main() -> None:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, telegraph_komga_link_received), # >>接受链接
                 CommandHandler("komga_complete", task_komga_complete) # >>停止接受链接
                 ],
-            TASK_KOMGA_COMPLETE: [MessageHandler(filters.COMMAND, cancel)]
+            #TASK_KOMGA_COMPLETE: [MessageHandler(filters.COMMAND, cancel)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )

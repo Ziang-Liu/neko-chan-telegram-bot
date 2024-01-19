@@ -16,24 +16,24 @@ async def read_and_download_link(queue_links, filename, isepub=False):
                 for link in file:
                     queue_links.put(link.strip())  # 将链接加入队列
             os.remove(filename)  # 删除临时文件
-            logger.info('Main: Read {} and added links to the queue'.format(filename))
+            logger.info(f'Main: Read {filename} and added links to the queue')
 
         if not queue_links.empty():
             link = queue_links.get()  # 获取队列链接
             download_task = start_download(link, isepub=isepub)
             if download_task:
                 await download_task  # 等待下载任务完成
-                logger.info('Main: Downloaded: {}'.format(link))
+                logger.info(f'Main: Downloaded: {link}')
         
         await asyncio.sleep(3)  # 暂停3秒
 
 async def main():
     komga_queue_link = queue.Queue()  # 创建 Komga 链接队列
     komga_task = asyncio.create_task(read_and_download_link(komga_queue_link, 'komga_link'))  # 创建 Komga 链接的异步任务
-    '''
-    epub_queue_link = queue.Queue()  # 创建 EPUB 链接队列
-    epub_task = asyncio.create_task(read_and_download_link(epub_queue_link, 'epub_link', isepub=True))  # 创建 EPUB 链接的异步任务
-    '''
+
+    #epub_queue_link = queue.Queue()  # 创建 EPUB 链接队列
+    #epub_task = asyncio.create_task(read_and_download_link(epub_queue_link, 'epub_link', isepub=True))  # 创建 EPUB 链接的异步任务
+
     subprocess_task = asyncio.create_task(run_subprocess())  # 创建子进程的异步任务
 
     try:
