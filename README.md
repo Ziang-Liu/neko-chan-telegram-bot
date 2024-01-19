@@ -22,7 +22,7 @@ epub_complete - Finish "epub_2_komga" command
 ## Features plan
 - [x] Integrating this functionality into a Telegram bot.
 - [x] Create a Docker container capable of running on a server.
-- [ ] Support epub upload.
+- [ ] Support epub upload.（etree import error）
 
 ## Known Problems
 1. If network timeout occurs, the service will have a force quit.
