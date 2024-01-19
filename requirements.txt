@@ -1,4 +1,5 @@
 bs4
+EbookLib
 python_telegram_bot
 requests
 urlextract
