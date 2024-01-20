@@ -7,8 +7,10 @@ from env import *
 # import from env (used by docker)
 try:
     download_threads = int(DOWNLOAD_THREADS)
+    proxy_url = {'http' : PROXY_URL, 'https' : PROXY_URL}
 except (ValueError, TypeError):
     download_threads = 8 # 默认多线程为 8
+    proxy_url = None
 send_url = GET_HEADER_TEST_URL
 docker_download_location = DOWNLOAD_PATH
 
@@ -20,7 +22,7 @@ def get_default_folder():
 
 def get_pictures(url, file_path) -> str:
     if not os.path.exists(file_path): # 图片没有下载的情况下写入图片
-        requested_url = requests.get(url)
+        requested_url = requests.get(url, proxies=proxy_url)
         with open(file_path, 'wb') as f:
             for chunk in requested_url.iter_content(chunk_size=128):
                 f.write(chunk)
@@ -119,7 +121,7 @@ def create_epub(manga_title, picpath, epubpath = docker_download_location) -> st
 '''
 def start_download(url=None, address=docker_download_location, isepub=False):
     # 获取用户代理信息
-    agent_response = requests.head(send_url)
+    agent_response = requests.head(send_url, proxies=proxy_url)
     user_agent = agent_response.request.headers['User-Agent']
     headers = {'User-Agent': user_agent}
 
@@ -130,7 +132,7 @@ def start_download(url=None, address=docker_download_location, isepub=False):
 
     try:
         # 获取图片URL列表
-        requested_url = requests.get(url, headers=headers)
+        requested_url = requests.get(url, headers=headers, proxies=proxy_url)
         image_urls = get_pictures_urls(requested_url.text)
         
         # 获取标题
@@ -142,8 +144,7 @@ def start_download(url=None, address=docker_download_location, isepub=False):
             str(manga_title)
         )
     except Exception:
-        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying in 5 seconds...')
-        time.sleep(5)
+        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying...')
         start_download(url, address, isepub)
 
     # 检查路径有效性

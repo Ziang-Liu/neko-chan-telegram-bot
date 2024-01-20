@@ -1,4 +1,4 @@
-import os
+import os, time
 from env import *
 from logger import logger
 from urlextract import URLExtract
@@ -15,6 +15,7 @@ from telegram.ext import (
 # import from env (used by docker)
 bot_token = TGBOT_TOKEN
 download_path = DOWNLOAD_PATH
+proxy_url = PROXY_URL
 
 TELEGRAPH_EPUB_LINK_RECEIVED, TELEGRAPH_KOMGA_LINK_RECEIVED, TASK_KOMGA_COMPLETE, TASK_EPUB_COMPLETE = range(4)
 #->telegraph message logic start
@@ -99,7 +100,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 def main() -> None:
 
     #启动bot
-    application = ApplicationBuilder().token(bot_token).build()
+    try:
+        application = ApplicationBuilder().token(bot_token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
+    except Exception:
+        application = ApplicationBuilder().token(bot_token).build()
     
     tgraph_komga_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_komga", start_tgraph_komga)], # >>接受 /tgraph_2_komga
@@ -132,8 +136,8 @@ def main() -> None:
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
     except Exception:
-        logger.error('BOT SERVICE: Unexpected timeout error, quiting...')
-        return
+        logger.error('BOT SERVICE: Unexpected timeout error, service restart.')
+        application.stop_running()
 
 if __name__ == "__main__":
     main()

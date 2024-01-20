@@ -3,9 +3,13 @@ from logger import logger
 from download_module import start_download  # 导入下载模块中的 start_download 函数
 
 async def run_subprocess():
-    os.chdir(os.path.dirname(__file__))  # 切换工作目录到当前文件所在目录
-    process = await asyncio.create_subprocess_exec('python', 'tgbot_service.py')  # 创建子进程
-    await process.communicate()  # 等待子进程执行完毕
+    while True:
+        try:
+            os.chdir(os.path.dirname(__file__))  # 切换工作目录到当前文件所在目录
+            process = await asyncio.create_subprocess_exec('python', 'tgbot_service.py')  # 创建子进程
+            await process.communicate()  # 等待子进程执行完毕
+        except Exception as e:
+            logger.error('MAIN: Subprocess Error:', e)
 
 # 读取链接并进行下载
 async def read_and_download_link(queue_links, filename, isepub=False):
@@ -44,14 +48,27 @@ async def main():
 
     while True:
         try:
-            await asyncio.gather(
-                subprocess_task,
-                komga_task,
-                #epub_task
-            )
+            done, pending = await asyncio.wait({subprocess_task, komga_task}, return_when=asyncio.FIRST_COMPLETED)
+
+            if subprocess_task in done:
+                logger.error('MAIN: subprocess_task has exited. Restarting...')
+                subprocess_task.cancel()
+                await subprocess_task
+                subprocess_task = asyncio.create_task(run_subprocess())
+
+            if komga_task in done:
+                logger.info('MAIN: komga_task has completed.')
+                if subprocess_task in pending:
+                    logger.error('MAIN: subprocess_task is still running. It will continue.')
+                else:
+                    logger.error('MAIN: subprocess_task has exited. Restarting...')
+                    subprocess_task.cancel()
+                    await subprocess_task
+                    subprocess_task = asyncio.create_task(run_subprocess())
+
         except asyncio.CancelledError:
-            logger.error('MAIN: subprocess_task has exited with an error. Restarting...')
-            subprocess_task = asyncio.create_task(run_subprocess())
+            logger.error('MAIN: Task has been cancelled.')
+            return
 
 if __name__ == "__main__":
     asyncio.run(main())
