@@ -13,7 +13,7 @@
   <Category/>
   <WebUI/>
   <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/jsavargas/telethon_downloader/master/templates/UNRAID/telegram_logo.png</Icon>
+  <Icon></Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
