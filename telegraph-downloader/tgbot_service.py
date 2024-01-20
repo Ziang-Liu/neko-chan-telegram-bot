@@ -15,7 +15,10 @@ from telegram.ext import (
 # import from env (used by docker)
 bot_token = TGBOT_TOKEN
 download_path = DOWNLOAD_PATH
-proxy_url = PROXY_URL
+try:
+    proxy_url = PROXY_URL
+except Exception:
+    proxy_url = 'http://' + PROXY_URL
 
 TELEGRAPH_EPUB_LINK_RECEIVED, TELEGRAPH_KOMGA_LINK_RECEIVED, TASK_KOMGA_COMPLETE, TASK_EPUB_COMPLETE = range(4)
 #->telegraph message logic start
