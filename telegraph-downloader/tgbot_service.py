@@ -13,7 +13,6 @@ from telegram.ext import (
 )
 
 # import from env (used by docker)
-proxy_url = PROXY_URL
 bot_token = TGBOT_TOKEN
 download_path = DOWNLOAD_PATH
 
@@ -100,7 +99,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 def main() -> None:
 
     #启动bot
-    application = ApplicationBuilder().token(bot_token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
+    application = ApplicationBuilder().token(bot_token).build()
     
     tgraph_komga_handler = ConversationHandler(
         entry_points=[CommandHandler("tgraph_2_komga", start_tgraph_komga)], # >>接受 /tgraph_2_komga
