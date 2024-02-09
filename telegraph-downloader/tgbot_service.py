@@ -1,8 +1,8 @@
-import os, time
+import os
 from env import *
 from logger import logger
 from urlextract import URLExtract
-from telegram import Update, Chat
+from telegram import Update, Chat, request
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -96,7 +96,10 @@ async def task_epub_complete(update: Update, context: ContextTypes.DEFAULT_TYPE)
 #->fallback handler start
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("BOT SERVICE: Conversation canceled or Fallback is triggered.")
-    
+    try:
+        request.HTTPXRequest(proxy=proxy_url)
+    except:
+        pass
     return ConversationHandler.END
 #<-fallback handler end
 
@@ -134,13 +137,14 @@ def main() -> None:
     '''
     application.add_handler(tgraph_komga_handler)
     #application.add_handler(tgraph_epub_handler)
-    #application.add_error_handler(callback = cancel, block = True)
+    application.add_error_handler(callback = cancel, block = True)
     # Run the bot until the user presses Ctrl-C
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
-    except Exception:
-        logger.error('BOT SERVICE: Unexpected timeout error, service restart.')
+    except Exception as e:
+        logger.error('BOT SERVICE: Start with unexpected timeout error.')
         application.stop_running()
+        raise Exception('An unexpected timeout error occurred. Exiting the program.')
 
 if __name__ == "__main__":
     main()

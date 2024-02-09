@@ -48,22 +48,11 @@ async def main():
 
     while True:
         try:
-            done, pending = await asyncio.wait({subprocess_task, komga_task}, return_when=asyncio.FIRST_COMPLETED)
+            done, _ = await asyncio.wait({subprocess_task, komga_task}, return_when=asyncio.FIRST_COMPLETED)
 
             if subprocess_task in done:
-                logger.error('MAIN: subprocess_task has exited. Restarting...')
-                subprocess_task.cancel()
-                await subprocess_task
-                subprocess_task = asyncio.create_task(run_subprocess())
-
-            if komga_task in done:
-                logger.info('MAIN: komga_task has completed.')
-                if subprocess_task in pending:
-                    logger.error('MAIN: subprocess_task is still running. It will continue.')
-                else:
-                    logger.error('MAIN: subprocess_task has exited. Restarting...')
-                    subprocess_task.cancel()
-                    await subprocess_task
+                if subprocess_task.exception() is not None:  # Check if the task has exited unexpectedly
+                    logger.error('MAIN: subprocess_task has exited unexpectedly. Restarting...')
                     subprocess_task = asyncio.create_task(run_subprocess())
 
         except asyncio.CancelledError:
