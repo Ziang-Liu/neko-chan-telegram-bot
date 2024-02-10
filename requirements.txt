@@ -1,6 +1,5 @@
 bs4
 EbookLib
-lxml = 4.9.4
 python_telegram_bot
 requests
 urlextract
