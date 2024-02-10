@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from env import *
 from fake_useragent import UserAgent
 try:
-    from ebooklib import epub
+    import epub
 except:
     logger.warning('DOWNLOAD MODULE: Fail to import etree! Maybe etree is not complied!')
 
