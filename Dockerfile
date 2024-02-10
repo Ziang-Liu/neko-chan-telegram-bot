@@ -12,8 +12,8 @@ FROM python:3-alpine
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential libxml2-dev libxslt1-dev \
-    && apt-get install -y python3-ebooklib
+RUN apk add --no-cache build-base libxml2-dev libxslt-dev
+RUN pip install -y python3-ebooklib
 
 COPY --from=builder /install /usr/local
 
