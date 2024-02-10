@@ -1,8 +1,9 @@
-import requests, re, os, zipfile, concurrent.futures, time
-#from ebooklib import epub
+import requests, re, os, zipfile, concurrent.futures, time, shutil
+from ebooklib import epub
 from logger import logger
 from bs4 import BeautifulSoup
 from env import *
+from fake_useragent import UserAgent
 
 # import from env (used by docker)
 try:
@@ -11,8 +12,7 @@ try:
 except (ValueError, TypeError):
     download_threads = 8 # 默认多线程为 8
     proxy_url = None
-send_url = GET_HEADER_TEST_URL
-docker_download_location = DOWNLOAD_PATH
+download_location = DOWNLOAD_PATH
 
 def get_default_folder():
     current_directory = os.path.dirname(__file__)
@@ -71,8 +71,8 @@ def zip_folder(path, output=None) -> str:
 
 def extract_number(filename):
     return int(re.search(r'\d+', filename).group())
-'''
-def create_epub(manga_title, picpath, epubpath = docker_download_location) -> str:
+
+def create_epub(manga_title, picpath, epubpath) -> str:
     logger.info('Epub: Creating EPUB for: %s', manga_title)
     
     manga = epub.EpubBook()
@@ -117,17 +117,19 @@ def create_epub(manga_title, picpath, epubpath = docker_download_location) -> st
     os.chdir(epubpath)  # 切换到 EPUB 存储路径
     epub_file_name = manga_title + '.epub'  # 设置 EPUB 文件名
     epub.write_epub(epub_file_name, manga, {})  # 写入 EPUB 文件
+    folder_path = os.path.join(epubpath,manga_title)
+    shutil.rmtree(folder_path)
     logger.info('Epub: EPUB creation complete for: %s', manga_title)
-'''
-def start_download(url=None, address=docker_download_location, isepub=False):
+
+def start_download(url=None, address=download_location, isepub=False):
     # 获取用户代理信息
-    agent_response = requests.head(send_url, proxies=proxy_url)
-    user_agent = agent_response.request.headers['User-Agent']
-    headers = {'User-Agent': user_agent}
+    user_agent = UserAgent()
+    ran_user_agent = user_agent.random
+    headers = {'User-Agent': ran_user_agent}
 
     # 检查链接有效性
     if "telegra.ph" not in url:
-        logger.warning('Detect wrong telegraph links %s', url)
+        logger.warning('DOWNLOAD MODULE: Detect wrong telegraph links %s', url)
         return
 
     try:
@@ -149,7 +151,7 @@ def start_download(url=None, address=docker_download_location, isepub=False):
 
     # 检查路径有效性
     if not os.path.isdir(address):
-        logger.warning('Invalid path: %s', address)
+        logger.warning('DOWNLOAD MODULE: Invalid path: %s', address)
         return
 
     # 创建目标文件夹
@@ -175,16 +177,11 @@ def start_download(url=None, address=docker_download_location, isepub=False):
         start_download(url, address, isepub)
 
     # 打包下载内容
-    #accumulated_target_path = []
-    #if isepub == False:
-    zip_folder(target_path)  # 如果不是创建 EPUB，则将内容打包为ZIP文件
-    '''
+    if isepub == False:
+        zip_folder(target_path)  # 如果不是创建 EPUB，则将内容打包为ZIP文件
+        os.chdir(address)
     else:
-        create_epub(converted_title, target_path)  # 如果需要创建 EPUB，则调用create_epub函数
-        try:
-            [os.remove(item) for item in accumulated_target_path]
-        except:
-            accumulated_target_path.append(target_path)
-    '''
+        create_epub(converted_title, target_path, address)  # 如果需要创建 EPUB，则调用create_epub函数
+        os.chdir(address)
 
     logger.info('DOWNLOAD MODULE: Successfully download %s', converted_title)

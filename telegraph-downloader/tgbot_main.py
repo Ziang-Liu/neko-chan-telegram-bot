@@ -38,9 +38,8 @@ async def read_and_download_link(queue_links, filename, isepub=False):
 async def main():
     komga_queue_link = queue.Queue()  # 创建 Komga 链接队列
     komga_task = asyncio.create_task(read_and_download_link(komga_queue_link, 'komga_link'))  # 创建 Komga 链接的异步任务
-    
-    #epub_queue_link = queue.Queue()  # 创建 EPUB 链接队列
-    #epub_task = asyncio.create_task(read_and_download_link(epub_queue_link, 'epub_link', isepub=True))  # 创建 EPUB 链接的异步任务
+    epub_queue_link = queue.Queue()  # 创建 EPUB 链接队列
+    epub_task = asyncio.create_task(read_and_download_link(epub_queue_link, 'epub_link', isepub=True))  # 创建 EPUB 链接的异步任务
     logger.info('MAIN: Start file monitoring service.')
 
     subprocess_task = asyncio.create_task(run_subprocess())  # 创建子进程的异步任务
@@ -48,7 +47,7 @@ async def main():
 
     while True:
         try:
-            done, _ = await asyncio.wait({subprocess_task, komga_task}, return_when=asyncio.FIRST_COMPLETED)
+            done, _ = await asyncio.wait({subprocess_task, komga_task, epub_task}, return_when=asyncio.FIRST_COMPLETED)
 
             if subprocess_task in done:
                 if subprocess_task.exception() is not None:  # Check if the task has exited unexpectedly
