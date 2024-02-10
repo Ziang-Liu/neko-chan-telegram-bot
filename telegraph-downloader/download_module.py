@@ -1,5 +1,5 @@
 import requests, re, os, zipfile, concurrent.futures, time, shutil
-from ebooklib import epub
+import epub
 from logger import logger
 from bs4 import BeautifulSoup
 from env import *
