@@ -1,6 +1,6 @@
-bs4
-python_telegram_bot
-requests
-urlextract
-fake_useragent
-EbookLib==0.16
+bs4==0.0.1
+python_telegram_bot==20.7
+requests==2.31.0
+urlextract==1.8.0
+fake_useragent==1.4.0
+EbookLib==0.18
