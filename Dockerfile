@@ -16,8 +16,6 @@ FROM builder
 
 COPY /telegraph-downloader /app/
 
-COPY /root/ /
-
 RUN chmod 777 /app/tgbot_main.py
 
 VOLUME /download
