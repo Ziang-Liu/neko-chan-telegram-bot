@@ -1,9 +1,13 @@
 import requests, re, os, zipfile, concurrent.futures, time, shutil
-from ebooklib import epub
 from logger import logger
 from bs4 import BeautifulSoup
 from env import *
 from fake_useragent import UserAgent
+try:
+    from ebooklib import epub
+except:
+    logger.warning('DOWNLOAD MODULE: Fail to import etree! Maybe etree is not complied!')
+
 
 # import from env (used by docker)
 try:
@@ -181,7 +185,10 @@ def start_download(url=None, address=download_location, isepub=False):
         zip_folder(target_path)  # 如果不是创建 EPUB，则将内容打包为ZIP文件
         os.chdir(address)
     else:
-        create_epub(converted_title, target_path, address)  # 如果需要创建 EPUB，则调用create_epub函数
+        try:
+            create_epub(converted_title, target_path, address)  # 如果需要创建 EPUB，则调用create_epub函数
+        except:
+            logger.error('DOWNLOAD MODULE: CAN NOT CREATE EPUB FILE.')
         os.chdir(address)
 
     logger.info('DOWNLOAD MODULE: Successfully download %s', converted_title)
