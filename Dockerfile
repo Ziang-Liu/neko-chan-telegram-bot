@@ -9,8 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && pip install --upgrade pip \
     && pip install --prefix="/install" -r /app/requirements.txt
 
-COPY --from=builder /install /usr/local
-
 COPY /telegraph-downloader /app/
 
 RUN chmod 777 /app/tgbot_main.py
