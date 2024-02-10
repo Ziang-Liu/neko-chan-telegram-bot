@@ -1,5 +1,5 @@
 bs4==0.0.1
-python_telegram_bot==20.7
+python_telegram_bot==20.3
 requests==2.31.0
 urlextract==1.8.0
 fake_useragent==1.4.0
