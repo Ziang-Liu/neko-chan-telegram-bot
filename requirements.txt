@@ -3,4 +3,3 @@ python_telegram_bot
 requests
 urlextract
 fake_useragent
-six
