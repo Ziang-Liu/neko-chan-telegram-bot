@@ -1,4 +1,4 @@
-FROM python:3.7 AS builder
+FROM python:3.8 AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 RUN pip install --upgrade pip \
     && pip install --prefix="/install" lxml==4.2.5 -r requirements.txt
 
-FROM python:3.7-alpine
+FROM python:3.8-alpine
 
 WORKDIR /app
 

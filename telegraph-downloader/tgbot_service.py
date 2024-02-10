@@ -143,7 +143,7 @@ def main() -> None:
     try:
         application.run_polling(allowed_updates=Update.ALL_TYPES, timeout= 30)
     except Exception as e:
-        logger.error('BOT SERVICE: Start with unexpected timeout error.')
+        logger.error(f'BOT SERVICE: Start with unexpected error {e}.')
         application.stop_running()
         raise Exception("An error occurred: {}".format(e)) from e
 
