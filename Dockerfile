@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && pip install --upgrade pip \
     && pip install --prefix="/install" -r /app/requirements.txt
 
-COPY /install /usr/local
+COPY --from=builder /install /usr/local
 
 COPY /telegraph-downloader /app/
 
