@@ -9,12 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
     && pip install --upgrade pip \
     && pip install --prefix="/install" -r /app/requirements.txt
 
-FROM python:3-alpine
-
-WORKDIR /app
-
-COPY --from=builder /install /usr/local
-COPY --from=builder /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
+COPY /install /usr/local
 
 COPY /telegraph-downloader /app/
 
