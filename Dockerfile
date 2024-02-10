@@ -14,7 +14,7 @@ FROM python:3-alpine
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-COPY --from=builder /usr/lib/python3/dist-packages/ebooklib /usr/lib/python3/dist-packages/ebooklib
+COPY --from=builder /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
 
 COPY /telegraph-downloader /app/
 
