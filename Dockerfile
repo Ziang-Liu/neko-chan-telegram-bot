@@ -6,7 +6,7 @@ COPY requirements.txt requirements.txt
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
     && pip install --upgrade pip \
-    && pip install --prefix="/install" -r requirements.txt
+    && pip install --prefix="/install" lxml==3.8.0 -r requirements.txt
 
 FROM python:3-alpine
 
