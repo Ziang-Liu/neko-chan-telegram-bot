@@ -9,7 +9,7 @@ async def run_subprocess():
             process = await asyncio.create_subprocess_exec('python', 'tgbot_service.py')  # 创建子进程
             await process.communicate()  # 等待子进程执行完毕
         except Exception as e:
-            logger.error('MAIN: Subprocess Error:', e)
+            logger.error(f'MAIN: Subprocess Error: {e}')
 
 # 读取链接并进行下载
 async def read_and_download_link(queue_links, filename, isepub=False):
@@ -32,7 +32,6 @@ async def read_and_download_link(queue_links, filename, isepub=False):
             if download_task:
                 await download_task
 
-        
         await asyncio.sleep(1)  # 暂停1秒
 
 async def main():
@@ -40,7 +39,7 @@ async def main():
     komga_task = asyncio.create_task(read_and_download_link(komga_queue_link, 'komga_link'))  # 创建 Komga 链接的异步任务
     epub_queue_link = queue.Queue()  # 创建 EPUB 链接队列
     epub_task = asyncio.create_task(read_and_download_link(epub_queue_link, 'epub_link', isepub=True))  # 创建 EPUB 链接的异步任务
-    logger.info('MAIN: Start file monitoring service.')
+    logger.info('MAIN: Start links monitoring service.')
 
     subprocess_task = asyncio.create_task(run_subprocess())  # 创建子进程的异步任务
     logger.info('MAIN: Start bot service.')

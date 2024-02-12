@@ -5,10 +5,21 @@ from env import *
 from fake_useragent import UserAgent
 try:
     import epub
-except:
-    logger.warning('DOWNLOAD MODULE: Fail to import etree! Maybe etree is not complied!')
-
-
+except Exception as e:
+    logger.error(f'DOWNLOAD MODULE: Fail to import lxml, error {e}')
+    logger.warning('DOWNLOAD MODULE: The Epub function will not work.')
+    logger.info('DOWNLOAD MODULE: Try to check files from lxml lib...')
+    import importlib.util
+    try:
+        spec = importlib.util.find_spec('lxml')
+        for root, dirs, files in os.walk(spec.submodule_search_locations[0]):
+            for file in files:
+                logger.info(os.path.join(root, file))
+            for dir in dirs:
+                logger.info (os.path.join(root, dir))
+    except Exception as e:
+        logger.info(f'DOWNLOAD MODULE: {e}')
+            
 # import from env (used by docker)
 try:
     download_threads = int(DOWNLOAD_THREADS)
@@ -77,8 +88,6 @@ def extract_number(filename):
     return int(re.search(r'\d+', filename).group())
 
 def create_epub(manga_title, picpath, epubpath) -> str:
-    logger.info('Epub: Creating EPUB for: %s', manga_title)
-    
     manga = epub.EpubBook()
     
     # 设置标题、标识符和语言
@@ -123,7 +132,7 @@ def create_epub(manga_title, picpath, epubpath) -> str:
     epub.write_epub(epub_file_name, manga, {})  # 写入 EPUB 文件
     folder_path = os.path.join(epubpath,manga_title)
     shutil.rmtree(folder_path)
-    logger.info('Epub: EPUB creation complete for: %s', manga_title)
+    logger.info(f'DOWNLOAD MODULE: EPUB creation complete for: {manga_title}')
 
 def start_download(url=None, address=download_location, isepub=False):
     # 获取用户代理信息
@@ -133,7 +142,7 @@ def start_download(url=None, address=download_location, isepub=False):
 
     # 检查链接有效性
     if "telegra.ph" not in url:
-        logger.warning('DOWNLOAD MODULE: Detect wrong telegraph links %s', url)
+        logger.warning(f'DOWNLOAD MODULE: Detect wrong link {url}')
         return
 
     try:
@@ -149,13 +158,14 @@ def start_download(url=None, address=download_location, isepub=False):
             lambda x: {'<title>': '', '</title>': '', '*': '', '|': '', '?': '', '– Telegraph': '', ' ': '', '/': '∕', ':': '∶'}[x.group()],
             str(manga_title)
         )
-    except Exception:
-        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying...')
+    except Exception as e:
+        logger.error(f'DOWNLOAD MODULE: {e}, retry in 5 seconds.')
+        time.sleep(5)
         start_download(url, address, isepub)
 
     # 检查路径有效性
     if not os.path.isdir(address):
-        logger.warning('DOWNLOAD MODULE: Invalid path: %s', address)
+        logger.error(f'DOWNLOAD MODULE: Invalid path: {address}')
         return
 
     # 创建目标文件夹
@@ -164,9 +174,9 @@ def start_download(url=None, address=download_location, isepub=False):
     
     if not os.path.exists(target_path):  # 如果路径不存在，则创建新路径
         os.mkdir(target_path)
-        logger.info('DOWNLOAD MODULE: Directory created: %s', target_path)
+        logger.info(f'DOWNLOAD MODULE: Create directory: {target_path}')
     else:
-        logger.info('DOWNLOAD MODULE: Directory already exists. Skiping...')
+        logger.warning('DOWNLOAD MODULE: Directory already exists. Skiping...')
 
     # 多线程下载图片
     os.chdir(target_path)
@@ -175,8 +185,8 @@ def start_download(url=None, address=download_location, isepub=False):
             future_to_url = {executor.submit(get_pictures, 'https://telegra.ph' + url, f'img{i}.jpg'): url for i, url in enumerate(image_urls)}
             for future in concurrent.futures.as_completed(future_to_url):
                 url = future_to_url[future]
-    except Exception:
-        logger.warning('DOWNLOAD MODULE: Timeout occurs, retrying in 5 seconds...')
+    except Exception as e:
+        logger.error(f'DOWNLOAD MODULE: {e}, retry in 5 seconds.')
         time.sleep(5)
         start_download(url, address, isepub)
 
@@ -187,8 +197,9 @@ def start_download(url=None, address=download_location, isepub=False):
     else:
         try:
             create_epub(converted_title, target_path, address)  # 如果需要创建 EPUB，则调用create_epub函数
-        except:
-            logger.error('DOWNLOAD MODULE: CAN NOT CREATE EPUB FILE.')
-        os.chdir(address)
+            os.chdir(address)
+        except Exception as e:
+            logger.error(f'DOWNLOAD MODULE: Can not create EPUB, {e}')
+            return
 
-    logger.info('DOWNLOAD MODULE: Successfully download %s', converted_title)
+    logger.info(f'DOWNLOAD MODULE: Successfully download {converted_title}')
