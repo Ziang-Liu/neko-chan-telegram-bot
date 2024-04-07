@@ -5,3 +5,4 @@ urlextract==1.8.0
 fake_useragent==1.4.0
 EbookLib==0.18
 chardet
+loguru

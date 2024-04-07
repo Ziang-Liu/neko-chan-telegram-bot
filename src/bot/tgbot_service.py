@@ -1,7 +1,5 @@
-import os, time
-from env import *
-from logger import logger
-from urlextract import URLExtract
+import time
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,6 +9,10 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from urlextract import URLExtract
+
+from src.bot.env import *
+from src.logger import logger
 
 # import from env (used by docker)
 try:
@@ -21,28 +23,32 @@ proxy_url = PROXY_URL
 bot_token = TGBOT_TOKEN
 download_path = DOWNLOAD_PATH
 
-TELEGRAPH_EPUB_LINK_RECEIVED, TELEGRAPH_KOMGA_LINK_RECEIVED, TASK_KOMGA_COMPLETE, TASK_EPUB_COMPLETE = range(4)
-#->telegraph message logic start
+(TELEGRAPH_EPUB_LINK_RECEIVED, TELEGRAPH_KOMGA_LINK_RECEIVED,
+ TASK_KOMGA_COMPLETE, TASK_EPUB_COMPLETE) = range(4)
+
+
 async def start_tgraph_komga(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text('Send me messages contain telegraph links.\nUse /komga_complete to stop.')
     logger.info("BOT SERVICE(Komga): Start Telegraph to Komga task.")
     return TELEGRAPH_KOMGA_LINK_RECEIVED
-##########↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##########################################################
+
+
 async def telegraph_komga_link_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = update.message.text_markdown
     logger.info(f"BOT SERVICE(Message): {message}")
-    urls = URLExtract().find_urls(message) # 提取消息包含的所有链接
-    telegraph_urls = [url for url in urls if "telegra.ph" in url] # 筛选出 telegraph 链接
+    urls = URLExtract().find_urls(message)  # 提取消息包含的所有链接
+    telegraph_urls = [url for url in urls if "telegra.ph" in url]  # 筛选出 telegraph 链接
     # 把链接写入 temp_file
     current_directory = os.path.dirname(__file__)
     if len(telegraph_urls) != 0:
-        with open(os.path.join(current_directory,'temp_komga_link'), "a", encoding='utf-8') as file:
+        with open(os.path.join(current_directory, 'temp_komga_link'), "a", encoding = 'utf-8') as file:
             for url in telegraph_urls:
                 file.write(url + '\n')
                 logger.info(f"BOT SERVICE(Komga): ADD {url}")
         await update.message.reply_text('Link received.')
-    
+
     return TELEGRAPH_KOMGA_LINK_RECEIVED
+
 
 async def task_komga_complete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("BOT SERVICE(Komga): Finished sending links.")
@@ -53,14 +59,14 @@ async def task_komga_complete(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text('No valid links provided.')
 
     return ConversationHandler.END
-#<-telegraph message logic end
 
-#->epub message logic start
+
 async def start_tgraph_epub(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("BOT SERVICE(Epub): Start Telegraph to Epub task.")
     await update.message.reply_text('Send me messages contain telegraph links.\nUse /epub_complete to stop.')
     return TELEGRAPH_EPUB_LINK_RECEIVED
-##########↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓##########################################################
+
+
 async def telegraph_epub_link_received(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = update.message.text_markdown
     logger.info(f"BOT SERVICE(Message): {message}")
@@ -68,20 +74,21 @@ async def telegraph_epub_link_received(update: Update, context: ContextTypes.DEF
     telegraph_urls = [i for i in url if "telegra.ph" in i]
     current_directory = os.path.dirname(__file__)
     if len(telegraph_urls) != 0:
-        with open(os.path.join(current_directory,'temp_epub_link'), "a", encoding='utf-8') as file:
+        with open(os.path.join(current_directory, 'temp_epub_link'), "a", encoding = 'utf-8') as file:
             for url in telegraph_urls:
-                file.write(url+'\n')
+                file.write(url + '\n')
                 logger.info(f"BOT SERVICE(Epub): ADD {url}")
         await update.message.reply_text('Link received.')
 
     return TELEGRAPH_EPUB_LINK_RECEIVED
+
 
 async def task_epub_complete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat_id = update.message.chat_id
     logger.info("BOT SERVICE(Epub): Finished sending links.")
     current_directory = os.path.dirname(__file__)
     if os.path.exists(os.path.join(current_directory, "temp_epub_link")):
-        with open(os.path.join(current_directory,'temp_epub_link'), "r", encoding='utf-8') as file:
+        with open(os.path.join(current_directory, 'temp_epub_link'), "r", encoding = 'utf-8') as file:
             line_count = sum(1 for line in file)
         wait = round(240 * line_count / threads)
         await update.message.reply_text(f'Epubs will start uploading in {wait} seconds.')
@@ -99,41 +106,39 @@ async def task_epub_complete(update: Update, context: ContextTypes.DEFAULT_TYPE)
             os.remove(os.path.join(download_path, file))
 
     return ConversationHandler.END
-#<-epub message logic end
 
-#->fallback handler start
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.error("BOT SERVICE: Triger fallbacks.")
     return ConversationHandler.END
-#<-fallback handler end
+
 
 def main() -> None:
-    #启动bot
     try:
         application = ApplicationBuilder().token(bot_token).proxy(proxy_url).get_updates_proxy(proxy_url).build()
     except Exception as e:
         application = ApplicationBuilder().token(bot_token).build()
 
     tgraph_komga_handler = ConversationHandler(
-        entry_points=[CommandHandler("tgraph_2_komga", start_tgraph_komga)], # >>接受 /tgraph_2_komga
-        states={
+        entry_points = [CommandHandler("tgraph_2_komga", start_tgraph_komga)],  # >>接受 /tgraph_2_komga
+        states = {
             TELEGRAPH_KOMGA_LINK_RECEIVED: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, telegraph_komga_link_received), # >>接受链接
-                CommandHandler("komga_complete", task_komga_complete) # >>停止接受链接
-                ],
+                MessageHandler(filters.TEXT & ~filters.COMMAND, telegraph_komga_link_received),  # >>接受链接
+                CommandHandler("komga_complete", task_komga_complete)  # >>停止接受链接
+            ],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
+        fallbacks = [CommandHandler('cancel', cancel)],
     )
 
     tgraph_epub_handler = ConversationHandler(
-        entry_points=[CommandHandler("tgraph_2_epub", start_tgraph_epub)], # >>接受 /tgraph_2_epub
-        states={
+        entry_points = [CommandHandler("tgraph_2_epub", start_tgraph_epub)],  # >>接受 /tgraph_2_epub
+        states = {
             TELEGRAPH_EPUB_LINK_RECEIVED: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, telegraph_epub_link_received),
                 CommandHandler("epub_complete", task_epub_complete)
-                ],
+            ],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
+        fallbacks = [CommandHandler('cancel', cancel)],
     )
 
     application.add_handler(tgraph_komga_handler)
@@ -141,10 +146,11 @@ def main() -> None:
     application.add_error_handler(callback = cancel, block = True)
 
     try:
-        application.run_polling(allowed_updates=Update.ALL_TYPES, timeout=30)
+        application.run_polling(allowed_updates = Update.ALL_TYPES, timeout = 30)
     except Exception as e:
-        logger.error(f'BOT SERVICE: Start with error {e}.')
+        logger.error(f'Start with error {e}.')
         application.stop_running()
+
 
 if __name__ == "__main__":
     main()
