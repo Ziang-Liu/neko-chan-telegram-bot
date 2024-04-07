@@ -14,4 +14,6 @@ RUN chmod 777 /src/launcher.py
 
 VOLUME /download
 
+ENV PYTHONPATH "${PYTHONPATH}:/src"
+
 CMD ["python3", "/src/launcher.py"]
