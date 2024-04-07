@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.ttk import *
 
-from src.telegraphlib.download import TelegraphDownloader
+from telegraphlib.download import TelegraphDownloader
 
 
 def start():

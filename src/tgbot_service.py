@@ -11,8 +11,8 @@ from telegram.ext import (
 )
 from urlextract import URLExtract
 
-from src.bot.env import *
-from src.logger import logger
+from telegraphlib.env import *
+from telegraphlib.logger import logger
 
 # import from env (used by docker)
 try:

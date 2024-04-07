@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 from fake_useragent import UserAgent
 
-from src.logger import logger
-from src.bot.env import *
+from logger import logger
+from env import *
 
 
 def _get_pic_url(text) -> list:

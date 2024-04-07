@@ -2,8 +2,8 @@ import asyncio
 import os
 import queue
 
-from src.logger import logger
-from src.telegraphlib.download import TelegraphDownloader
+from telegraphlib.download import TelegraphDownloader
+from telegraphlib.logger import logger
 
 
 async def run_subprocess():
