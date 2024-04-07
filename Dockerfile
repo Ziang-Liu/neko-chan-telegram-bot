@@ -10,7 +10,7 @@ RUN dnf install -y python3 python3-pip gcc libxml2-devel libxslt-devel \
 
 COPY /src /src/
 
-RUN chmod 777 /app/bot/launcher.py
+RUN chmod 777 /src/bot/launcher.py
 
 VOLUME /download
 
