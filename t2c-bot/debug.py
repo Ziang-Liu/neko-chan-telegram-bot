@@ -1,18 +1,16 @@
-import ctypes
 import threading
 import tkinter as tk
 from tkinter import filedialog
 from tkinter.ttk import *
 
-from telegraphlib.download import TelegraphDownloader
+from download import TelegraphDownloader
 
 
 def start():
     downloader = TelegraphDownloader()
     downloader.url = entry1.get()
     downloader.download_path = entry2.get()
-    # change to your own proxy
-    downloader.proxy = {"http": "host:port", "https": "host:port"}
+    downloader.proxy = {"http": "127.0.0.1:7890", "https": "127.0.0.1:7890"}
     entry1.delete(0, tk.END)
     epub_check = epub_var.get()
 
@@ -24,10 +22,6 @@ def start():
     download_thread.start()
 
 
-def on_enter_pressed(events):
-    start()
-
-
 def select_folder():
     folder_path = filedialog.askdirectory()
     entry2.delete(0, tk.END)
@@ -35,16 +29,8 @@ def select_folder():
 
 
 window = tk.Tk()
-window.title("Telegraph Downloader")
+window.title("debug")
 window.resizable(False, False)
-
-try:
-    # For Windows platform only
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    ScaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0)
-    window.tk.call('tk', 'scaling', ScaleFactor / 75)
-except Exception:
-    pass
 
 input_frame = tk.Frame(window, padx = 10, pady = 10)
 input_frame.pack(fill = "both", expand = True)
@@ -63,13 +49,10 @@ browse_button = tk.Button(input_frame, text = "Browse", command = select_folder)
 browse_button.grid(row = 1, column = 2)
 
 epub_var = tk.BooleanVar()
-epub_checkbox = Checkbutton(input_frame, text = "Generate ePub", variable = epub_var)
+epub_checkbox = Checkbutton(input_frame, text = "Convert to EPUB", variable = epub_var)
 epub_checkbox.grid(row = 2, columnspan = 3)
 
 button = tk.Button(input_frame, text = "Start Download", command = start)
 button.grid(row = 3, columnspan = 3, pady = 10)
-
-entry1.bind('<Return>', on_enter_pressed)
-entry2.bind('<Return>', on_enter_pressed)
 
 window.mainloop()

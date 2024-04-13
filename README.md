@@ -1,23 +1,23 @@
-# [telegraph-2-Komga-format](https://github.com/Ziang-Liu/telegraph-2-Komga-format)
-Since the latest release of [tachiyomi](https://github.com/tachiyomiorg/tachiyomi) removed official support for plugins and recommended connecting to self-hosted comic servers, I intend to migrate many of the comics I've read on Telegraph to the open-source comic management project, [komga](https://github.com/gotson/komga). Based on its categorization of tankobon, I have currently made a simple script for the purpose of downloading, packaging, and archiving comics.
-
-## Usage
-
-### GUI Notes
-Review the requirements.txt file and install the relevant dependencies.
-
-### Docker Deployment
-1. Paste dockerhub repository **darinirvana/telegraph-2-komga-format** or use command `docker pull darinirvana/telegraph-2-komga-format:latest`
-2. Check **docker-compose.yml** and fill corresponding variables. (Note: Currently supports only http_proxy.) 
-
-### Bot Config
-Below is a set of sample commands that can be added to your personal bot:
-``` txt
-tgraph_2_komga - Receive telegraph links and send manga to your komga server.
-komga_complete - Finish "tgraph_2_komga" command
-```
-
-## Features plan
-- [x] Integrating this functionality into a Telegram bot.
-- [x] Create a Docker container capable of running on a server.
-- [ ] Support epub upload.（etree import error on linux.）
+# Neko-Chan
+A self-hosted Telegram bot designed to turn Telegraph links into local manga source that supports platforms such as Komga and Tachiyomi, along with other integrated features for enhanced functionality.
+## Docker Deployment  
+>You can run [debug.py](https://github.com/Ziang-Liu/Neko-Chan/blob/main/t2c-bot/debug.py) in advance to have a try.
+1. Use Docker-hub repository **darinirvana/telegraph-2-komga-format** or use command `docker pull darinirvana/telegraph-2-komga-format:latest`  
+2. Check [docker-compose.yml](https://github.com/Ziang-Liu/Neko-Chan/blob/main/docker-compose.yml) , fill necessary environmental variables.
+3. Run the container
+## Bot Config  
+Below is a set of sample commands that can be added to your personal bot:  
+``` txt  
+monitor_start - Service for link fetching and image search, etc.
+monitor_finish - Stop the service and Neko-Chan won't read the messages.
+t2epub - Read Telegraph link and give you converted epub file
+```  
+  
+## Features List
+- [x] Integrating functionality into a Telegram Bot based on [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot).  
+- [x] Docker container support.
+- [x] Auto sync Telegraph links into your own Komga server.
+- [x] Epub conversion and upload function on Telegram based on [ebooklib](https://github.com/aerkalov/ebooklib).
+- [x] Auto image search based on [PicImageSearch](https://github.com/kitUIN/PicImageSearch)
+- [ ] Daily conversation feature.
+- [ ] EX, EH, NH fetching support.

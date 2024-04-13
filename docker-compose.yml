@@ -10,7 +10,8 @@ services:
     environment:
       - 'PUID=1000'
       - 'PGID=1000'
-      - 'TG_BOT_TOKEN='
+      - 'BOT_TOKEN='
+      - 'USER_ID='
       - 'TZ=Asia/Shanghai'
       - 'DOWNLOAD_THREADS='
       - 'PROXY_URL='

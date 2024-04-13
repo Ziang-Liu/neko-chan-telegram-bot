@@ -21,8 +21,9 @@
   <DonateText/>
   <DonateLink/>
   <Requires/>
-  <Config Name="TG_BOT_TOKEN" Target="TG_BOT_TOKEN" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="BOT_TOKEN" Target="BOT_TOKEN" Default="" Mode="" Description="" Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="USER_ID" Target="USER_ID" Default="" Mode="" Description="" Type="Variable" Display="always" Required="true" Mask="false"></Config>
   <Config Name="DOWNLOAD_THREADS" Target="DOWNLOAD_THREADS" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"></Config>
-  <Config Name="DOWNLOAD_PATH" Target="/download" Default="" Mode="rw" Description="" Type="Path" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="DOWNLOAD_PATH" Target="/download" Default="" Mode="rw" Description="" Type="Path" Display="always" Required="false" Mask="true"></Config>
   <Config Name="PROXY_URL" Target="PROXY_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"></Config>
 </Container>
