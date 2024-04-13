@@ -1,4 +1,4 @@
-import os.path
+import os.path as path
 import threading
 from queue import Queue
 
@@ -29,16 +29,32 @@ except ValueError:
     proxy = None
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_markdown(
+        f"👀 Wink, {update.message.from_user.full_name}\n\n"
+        f"Here is Neko-Chan, designed to turn Telegraph links into local manga source "
+        f"that supports Komga and Tachiyomi, along with other useful features.\n\n"
+        f"_Command instructions_:\n"
+        f"`/monitor_start` : Start service for link fetching and image search, etc.\n"
+        f"`/monitor_finish` : Neko-Chan stop read messages.\n"
+        f"`/t2epub` : Read Telegraph link and send you converted epub book.\n\n"
+        f"This [project](https://github.com/Ziang-Liu/Neko-Chan) will add more features in the future, "
+        f"you can star it if you like this bot)."
+    )
+
+    return ConversationHandler.END
+
+
 async def monitor_service(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('IM WORKING ;)\nUse /monitor_finish to stop.')
-    logger.info(f"USER {update.message.from_user.id} start monitoring service")
+    await update.message.reply_text('I will monitor messages now 👋\nYou can use /monitor_finish to stop')
+    logger.info(f"USER {update.message.from_user.id}: start monitoring service")
 
     return MONITOR
 
 
 async def epub_service(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Send me a message contains telegraph link")
-    logger.info(f"USER {update.message.from_user.id} start epub service")
+    await update.message.reply_text("Send or forward me a telegraph manga post 😎")
+    logger.info(f"USER {update.message.from_user.id}: start epub service")
 
     return EPUB
 
@@ -47,16 +63,23 @@ async def telegraph_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     # sync telegraph links to komga format
     if message.from_user.id == special_user_id:
-        logger.info(f"USER:{special_user_id}-Message:{message.text.replace('\n', '->next line:')}")
+        logger.info(f"USER {special_user_id}: {message.text.replace('\n', '->')}")
 
         urls = URLExtract().find_urls(message.text_markdown)
         [telegraph_task_queue.put(url) for url in [url for url in urls if "telegra.ph" in url]]
 
 
 async def epub_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def send_epub():
+        with open(path.join(down_instance.download_path, down_instance.title + '.epub'), 'rb') as book:
+            logger.info(f"USER {message.from_user.id}: Send epub '{file}'")
+            await context.bot.send_document(
+                chat_id = message.chat_id, document = book,
+                read_timeout = 60, connect_timeout = 60, write_timeout = 60)
+
     message = update.message
     # sync telegraph links to epub files and upload
-    logger.info(f"USER:{special_user_id}-Message:{message.text.replace('\n', '->next line:')}")
+    logger.info(f"USER {message.from_user.id}: {message.text.replace('\n', '->')}")
     down_instance = TelegraphDownloader()
     down_instance.download_path = DOWNLOAD_PATH
     urls = URLExtract().find_urls(message.text_markdown)
@@ -64,7 +87,7 @@ async def epub_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     down_instance.get_title()
 
     if down_instance.url is None:
-        await message.reply_text("No valid link provided")
+        await message.reply_text("I can not find valid link 🤔")
 
     try:
         down_instance.threads = int(DOWNLOAD_THREADS)
@@ -74,18 +97,13 @@ async def epub_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
         down_instance.threads = 4
         down_instance.proxy = None
 
-    file_list = os.listdir(down_instance.download_path)
-
-    if not any(file.startswith(down_instance.title) for file in file_list):
-        down_instance.pack_epub()
-
     for file in os.listdir(down_instance.download_path):
-        if file.startswith(down_instance.title):
-            with open(os.path.join(down_instance.download_path, file), 'rb') as book:
-                logger.info(f"Upload '{file}' to USER:{message.from_user.id}")
-                await context.bot.send_document(
-                    chat_id = message.chat_id, document = book,
-                    read_timeout = 60, connect_timeout = 60, write_timeout = 60)
+        if down_instance.title + '.epub' == file:
+            await send_epub()
+            return ConversationHandler.END
+
+    down_instance.pack_epub()
+    await send_epub()
 
     return ConversationHandler.END
 
@@ -93,7 +111,7 @@ async def epub_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def search_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     # use iqdb to search images
-    logger.info(f"USER:{message.from_user.id}-PhotoID:{message.photo[2].file_unique_id}")
+    logger.info(f"USER {message.from_user.id}: IMAGE {message.photo[2].file_id}")
 
     image_url = await context.bot.get_file(message.photo[2].file_id)
     search_instance = ImageSearch()
@@ -102,21 +120,22 @@ async def search_thread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await search_instance.sync()
 
     if search_instance.similarity >= 80:
-        await message.reply_text(
-            f"---Auto image search---\n"
-            f"Image URL: {search_instance.source_url}\n"
-            f"Site: {search_instance.source}\n"
-            f"Similarity: {search_instance.similarity}")
+        await message.reply_markdown(
+            f"🔎 **_Auto image search result_**\n"
+            f"🖼️ [Image]({search_instance.source_url}) from "
+            f"{search_instance.source} with {search_instance.similarity}% similarity, "
+            f"size {search_instance.size}")
 
 
 async def finish_monitor_service(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"USER {update.message.from_user.id} finish monitoring service")
-    await update.message.reply_text('See you next time XD')
+    await update.message.reply_text('See you next time 😊')
 
     return ConversationHandler.END
 
 
 async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"USER {update.message.from_user.id} trigger /cancel")
     return ConversationHandler.END
 
 
@@ -151,6 +170,12 @@ if __name__ == "__main__":
         .get_updates_proxy(proxy)
         .build())
 
+    start_handler = ConversationHandler(
+        entry_points = [CommandHandler("start", start)],
+        states = {},
+        fallbacks = [],
+    )
+
     monitor_handler = ConversationHandler(
         entry_points = [CommandHandler("monitor_start", monitor_service)],
         states = {
@@ -160,7 +185,7 @@ if __name__ == "__main__":
                 CommandHandler("monitor_finish", finish_monitor_service)
             ],
         },
-        fallbacks = [CommandHandler("cancel", callback)]
+        fallbacks = []
     )
 
     epub_handler = ConversationHandler(
@@ -173,6 +198,7 @@ if __name__ == "__main__":
 
     start_thread(target = telegraph_task, args = (telegraph_task_queue,))
 
+    neko_chan.add_handler(start_handler)
     neko_chan.add_handler(monitor_handler)
     neko_chan.add_handler(epub_handler)
 
