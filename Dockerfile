@@ -10,8 +10,8 @@ RUN dnf install -y python3 python3-pip gcc libxml2-devel libxslt-devel \
 
 COPY bot /app
 
-RUN chmod -R 777 /app/bot
+RUN chmod -R 777 /app
 
 VOLUME /download
 
-CMD ["python3", "/app/bot/bot.py"]
+CMD ["python3", "/app/bot.py"]
