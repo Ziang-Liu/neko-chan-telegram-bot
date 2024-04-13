@@ -6,14 +6,12 @@ class ImageSearch:
     def __init__(self):
         self.proxy = None
         self.url = ''
-        self.content: str = ''
         self.source_url: str = ''
         self.similarity: float = 0.0
         self.size: str = ''
         self.source: str = ''
 
     def _show_result(self, resp: IqdbResponse):
-        self.content = resp.raw[0].content
         self.source_url = resp.raw[0].url
         self.similarity = resp.raw[0].similarity
         self.size = resp.raw[0].size
