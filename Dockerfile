@@ -8,10 +8,10 @@ RUN dnf install -y python3 python3-pip gcc libxml2-devel libxslt-devel \
     && pip install --upgrade pip \
     && pip install -r requirements.txt
 
-COPY /t2c-bot /src/
+COPY /bot /src/
 
-RUN chmod 777 /t2c-bot/bot.py
+RUN chmod -R 777 /bot
 
 VOLUME /download
 
-CMD ["python3", "/t2c-bot/bot.py"]
+CMD ["python3", "/bot/bot.py"]
