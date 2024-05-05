@@ -8,7 +8,7 @@ RUN dnf install -y python3 python3-pip gcc libxml2-devel libxslt-devel \
     && pip install --upgrade pip \
     && pip install -r requirements.txt
 
-COPY bot /app
+COPY src/bot /app
 
 RUN chmod -R 777 /app
 

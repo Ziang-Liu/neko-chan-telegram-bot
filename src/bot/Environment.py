@@ -1,0 +1,42 @@
+import os
+
+from src.utils.LoggerUtil import logger
+
+
+class EnvironmentReader:
+    def __init__(self):
+        # bot params
+        self.BOT_TOKEN = str(os.getenv('BOT_TOKEN', '<KEY>'))
+        self.SELF_USER_ID = int(os.getenv('SELF_USER_ID', -1))
+        # basic working dirs
+        os.makedirs(name = '/media', exist_ok = True, mode = 0o777)
+        self.KOMGA_PATH = os.getenv('KOMGA_PATH', '/media/komga/')
+        self.DMZJ_PATH = os.getenv('DMZJ_PATH', '/media/dmzj/')
+        self.EPUB_PATH = os.getenv('EPUB_PATH', '/media/epub/')
+        self.TEMP_PATH = os.getenv('TEMP_PATH', '/media/.temp/')
+        self.DEPRECATED_PATH = os.getenv('DEPRECATED_PATH', '/media/.deprecated/')
+        # other
+        self.TELEGRAPH_MAX_THREAD = int(os.getenv('TELEGRAPH_MAX_THREAD', 4))
+        self.DMZJ_MAX_THREAD = int(os.getenv('DMZJ_MAX_THREAD', 2))
+        self.HTTP_PROXY = str(os.getenv('HTTP_PROXY', '<PROTOCOL>://<HOST>:<PORT>'))
+
+    def print_env(self):
+        logger.info(f'BOT_TOKEN: {self.BOT_TOKEN}')
+        logger.info(f'SELF_USER_ID: {self.SELF_USER_ID}')
+        logger.info(f'HTTP_PROXY: {self.HTTP_PROXY}')
+        logger.info(f'TELEGRAPH_MAX_THREAD: {self.TELEGRAPH_MAX_THREAD}')
+        logger.info(f'DMZJ_MAX_THREAD: {self.DMZJ_MAX_THREAD}')
+
+    def print_attribute(self, attribute_name):
+        if hasattr(self, attribute_name):
+            attribute_value = getattr(self, attribute_name)
+            logger.info(f"{attribute_name}: {attribute_value}")
+        else:
+            attribute_value = getattr(self, attribute_name)
+            logger.info(f"{attribute_name}: {attribute_value}")
+
+    def get_variable(self, variable_name):
+        value = getattr(self, variable_name, None)
+        if isinstance(value, str):
+            return value.strip() if value is not None else None
+        return value

@@ -1,9 +1,9 @@
-import os.path as path
+import asyncio
+import concurrent.futures
+import os
 import threading
-import time
 from queue import Queue
 
-import requests
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -15,17 +15,21 @@ from telegram.ext import (
 )
 from urlextract import URLExtract
 
-from download import TelegraphDownloader
-from env import *
-from logger import logger
-from search import ImageSearch
+from src.bot.Environment import EnvironmentReader
+from src.service.ImageSearchService import ImageSearch
+from src.service.TelegraphService import Telegraph
+from src.utils.LoggerUtil import logger
 
+constants = EnvironmentReader()
+bot_token = constants.get_variable('BOT_TOKEN')
+proxy = constants.get_variable('HTTP_PROXY')
+myself = constants.get_variable('SELF_USER_ID')
+komga_path = constants.get_variable('KOMGA_PATH')
+epub_path = constants.get_variable('EPUB_PATH')
+threads = constants.get_variable('TELEGRAPH_MAX_THREAD')
 
-bot_token = BOT_TOKEN
-proxy = PROXY_URL
-
-myself = int(USER_ID)
 telegraph_queue = Queue()
+image_queue = Queue()
 
 (MONITOR, EPUB) = range(2)
 
@@ -77,7 +81,7 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     be downloaded and converted to epub from telegraph link then upload it to the user
     """
     async def upload():
-        with open(path.join(epub.download_path, epub.title + '.epub'), 'rb') as book:
+        with open(os.path.join(epub.download_path, epub.full_title + '.epub'), 'rb') as book:
             logger.info(f"USER {update.message.from_user.id}: Send epub '{file}'")
             await context.bot.send_document(
                 chat_id = update.message.chat_id, document = book,
@@ -86,47 +90,59 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"USER {update.message.from_user.id}: {update.message.text.replace('\n', '->')}")
     urls = URLExtract().find_urls(update.message.text_markdown)
 
-    epub = TelegraphDownloader()
-    epub.download_path = DOWNLOAD_PATH
-    epub.threads = int(DOWNLOAD_THREADS)
-    epub.proxy = {"http": PROXY_URL, "https": PROXY_URL}
+    epub = Telegraph()
+    epub.download_path = epub_path
+    epub._threads = threads
+    epub._proxy = {"http": proxy, "https": proxy}
     epub.url = next((url for url in urls if "telegra.ph" in url), None)
-    epub.get_title()
+    epub.get_basic_info()
 
     if epub.url is None:
         await update.message.reply_text("I can not find valid link 🤔")
 
     for file in os.listdir(epub.download_path):
-        if epub.title + '.epub' == file:
+        if epub.full_title + '.epub' == file:
             await upload()
 
             return ConversationHandler.END
 
-    epub.pack_epub()
+    epub.pack_to_epub()
     await upload()
 
     return ConversationHandler.END
 
 
-async def image_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def fetch_image_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handled by monitor_handler, use PicImageSearch API to search photo type messages
     """
     logger.info(f"USER {update.message.from_user.id}: IMAGE {update.message.photo[2].file_id}")
-    image_url = await context.bot.get_file(update.message.photo[2].file_id)
+    image_url = (await context.bot.get_file(update.message.photo[2].file_id)).file_path
+    image_queue.put(image_url)
 
-    search = ImageSearch()
-    search.url = image_url.file_path
-    search.proxy = proxy
 
-    await search.sync()
+async def image_search(update: Update):
+    while True:
+        async def search_thread(image_queue):
+            search = ImageSearch()
+            search.input_url = image_queue.get()
+            search.proxy = proxy
+            await search.sync()
 
-    if search.similarity >= 80:
-        await update.message.reply_markdown(
-            f"🔎 **_Auto image search result_**\n"
-            f"🖼️ [Image]({search.source_url}) from "
-            f"{search.source} with {search.similarity}% similarity, "
-            f"size {search.size}")
+            if search.iqdb_similarity >= 80.0:
+                await update.message.reply_markdown(
+                    f"🔎 **_Auto image search result_**\n"
+                    f"🖼️ [Image]({search.iqdb_url}) from "
+                    f"{search.iqdb_source} with {search.iqdb_similarity}% similarity, "
+                    f"size {search.iqdb_size}")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
+            future_to_queue = {executor.submit(search_thread)}
+
+            for future in concurrent.futures.as_completed(future_to_queue):
+                await future.result()
+
+        await asyncio.sleep(5)
 
 
 async def monitor_finish(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -156,23 +172,12 @@ def telegraph_thread(queue_input):
     Create a thread to monitor telegraph link queue and trigger pack_zip() task
     """
     while True:
-        down_instance = TelegraphDownloader()
-        down_instance.download_path = DOWNLOAD_PATH
+        down_instance = Telegraph()
+        down_instance.download_path = komga_path
         down_instance.url = queue_input.get()
-        down_instance.threads = int(DOWNLOAD_THREADS)
-        down_instance.proxy = {"http": PROXY_URL, "https": PROXY_URL}
-        down_instance.pack_zip()
-
-
-def keep_alive_thread(_proxy):
-    api = f"https://api.telegram.org/bot{bot_token}/getMe"
-    response = requests.get(api, proxies = {"http": _proxy, "https": _proxy}, timeout = 10)
-    if response.status_code == 200:
-        logger.info(f'Keep alive with telegram api, status code {response.status_code}')
-        time.sleep(60)
-    else:
-        logger.error(f'Keep alive failed with telegram api, status code {response.status_code}')
-        time.sleep(10)
+        down_instance._threads = threads
+        down_instance._proxy = {"http": proxy, "https": proxy}
+        down_instance.sync_to_library()
 
 
 if __name__ == "__main__":
@@ -185,7 +190,7 @@ if __name__ == "__main__":
         states = {
             MONITOR: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, fetch_telegraph_link),
-                MessageHandler(filters.PHOTO & ~filters.COMMAND, image_search),
+                MessageHandler(filters.PHOTO & ~filters.COMMAND, fetch_image_link),
                 CommandHandler("monitor_finish", monitor_finish)]},
         fallbacks = [])
 
@@ -195,7 +200,6 @@ if __name__ == "__main__":
         fallbacks = [CommandHandler("cancel", callback)])
 
     create_thread(target = telegraph_thread, args = (telegraph_queue,))
-    create_thread(target = keep_alive_thread, args = (proxy,))
 
     neko_chan = (ApplicationBuilder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build())
     neko_chan.add_handler(start_handler)
