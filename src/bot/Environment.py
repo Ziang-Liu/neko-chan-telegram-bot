@@ -16,16 +16,12 @@ class EnvironmentReader:
         self.TEMP_PATH = os.getenv('TEMP_PATH', '/media/.temp/')
         self.DEPRECATED_PATH = os.getenv('DEPRECATED_PATH', '/media/.deprecated/')
         # other
-        self.TELEGRAPH_MAX_THREAD = int(os.getenv('TELEGRAPH_MAX_THREAD', 1))
-        self.DMZJ_MAX_THREAD = int(os.getenv('DMZJ_MAX_THREAD', 1))
         self.HTTP_PROXY: None | str = os.getenv('HTTP_PROXY', None)
 
     def print_env(self):
         logger.info(f'BOT_TOKEN: {self.BOT_TOKEN}')
         logger.info(f'SELF_USER_ID: {self.SELF_USER_ID}')
         logger.info(f'HTTP_PROXY: {self.HTTP_PROXY}')
-        logger.info(f'TELEGRAPH_MAX_THREAD: {self.TELEGRAPH_MAX_THREAD}')
-        logger.info(f'DMZJ_MAX_THREAD: {self.DMZJ_MAX_THREAD}')
 
     def print_attribute(self, attribute_name):
         if hasattr(self, attribute_name):
