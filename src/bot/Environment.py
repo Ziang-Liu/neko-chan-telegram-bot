@@ -9,14 +9,16 @@ class EnvironmentReader:
         self.BOT_TOKEN = str(os.getenv('BOT_TOKEN', ''))
         self.SELF_USER_ID = int(os.getenv('SELF_USER_ID', -1))
         # basic working dirs
-        os.makedirs(name = '/media', exist_ok = True, mode = 0o777)
-        self.KOMGA_PATH = os.getenv('KOMGA_PATH', '/media/komga/')
-        self.DMZJ_PATH = os.getenv('DMZJ_PATH', '/media/dmzj/')
-        self.EPUB_PATH = os.getenv('EPUB_PATH', '/media/epub/')
-        self.TEMP_PATH = os.getenv('TEMP_PATH', '/media/.temp/')
-        self.DEPRECATED_PATH = os.getenv('DEPRECATED_PATH', '/media/.deprecated/')
+        self.BASE_DIR = os.getenv('BASE_DIR', '/media')
+        os.makedirs(name = self.BASE_DIR, exist_ok = True, mode = 0o777)
+
+        self.KOMGA_PATH = os.getenv('KOMGA_PATH', f'{self.BASE_DIR}/komga/')
+        self.DMZJ_PATH = os.getenv('DMZJ_PATH', f'{self.BASE_DIR}/dmzj/')
+        self.EPUB_PATH = os.getenv('EPUB_PATH', f'{self.BASE_DIR}/epub/')
+        self.TEMP_PATH = os.getenv('TEMP_PATH', f'{self.BASE_DIR}/.temp/')
         # other
         self.HTTP_PROXY: None | str = os.getenv('HTTP_PROXY', None)
+        self.TELEGRAPH_THREADS = int(os.getenv('TELEGRAPH_THREADS', 8))
 
     def print_env(self):
         logger.info(f'BOT_TOKEN: {self.BOT_TOKEN}')

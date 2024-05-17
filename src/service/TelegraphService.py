@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 import zipfile
-from uuid import uuid4
 
 import aiofiles
 import aiohttp
@@ -20,15 +19,17 @@ class Telegraph:
         env = EnvironmentReader()
 
         # manga params
-        self.full_title = "None"
-        self.manga_title = "None"
-        self.artist_name = 'その他'
+        self.full_title: str | None = None
+        self.manga_title: str | None = None
+        self.artist_name: str | None = None
 
         # network params
         self._proxy = env.get_variable("HTTP_PROXY")
+        self._thread = env.get_variable("TELEGRAPH_THREADS")
         self._headers = {'User-Agent': UserAgent().random}
 
         # working dir
+        self.base_folder = env.get_variable("BASE_DIR")
         working_dirs = []
         self.komga_folder = env.get_variable("KOMGA_PATH")
         working_dirs.append(self.komga_folder)
@@ -36,8 +37,6 @@ class Telegraph:
         working_dirs.append(self.epub_folder)
         self._temp_folder = env.get_variable("TEMP_PATH")
         working_dirs.append(self._temp_folder)
-        self._deprecated_folder = env.get_variable("DEPRECATED_PATH")
-        working_dirs.append(self._deprecated_folder)
         self._current_working_dir = os.getcwd()
 
         # create basic dirs
@@ -46,128 +45,161 @@ class Telegraph:
 
         # generated path
         self.manga_path = self._temp_folder
-        self._download_path = os.path.join(self._temp_folder, str(uuid4()))
+        self._download_path = self._temp_folder
 
         # generate preference
         self._is_epub = False
         self._is_zip = False
 
-    async def _create_download_thread(self):
-        async with aiohttp.ClientSession() as session:
+    async def _image_retry_handler(self, session, url, image_path, retries=5, delay=3):
+        for attempt in range(retries):
+            try:
+                await self._write_image(session, url, image_path)
+                return
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
+
+    async def _start_task_queue(self):
+        async def worker():
+            while True:
+                img_num, url = await queue.get()
+
+                if url is None:
+                    break
+
+                image_path = os.path.join(self._download_path, f'{img_num}.jpg')
+                await self._image_retry_handler(session, url, image_path)  # use function
+                queue.task_done()
+
+        queue = asyncio.Queue()
+
+        for rank, link in enumerate(self._image_url_list):
+            queue.put_nowait((rank, link))
+
+        timeout = aiohttp.ClientTimeout(total=10)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             tasks = []
 
-            for i, url in enumerate(self._image_url_list):
-                image_path = os.path.join(self._download_path, f'{i}.jpg')
-                tasks.append(self._image_downloader(session, url, image_path, 3))
+            for _ in range(self._thread):
+                task = asyncio.create_task(worker())
+                tasks.append(task)
+
+            await queue.join()
+
+            for _ in range(self._thread):
+                queue.put_nowait((None, None))
 
             await asyncio.gather(*tasks)
 
-    async def _create_download_task(self):
+    async def _create_task(self):
         zip_path = os.path.join(self.manga_path, self.manga_title + '.zip')
         epub_path = os.path.join(self.manga_path, self.manga_title + '.epub')
 
         if self._is_zip and os.path.exists(zip_path):
-            return "Exist ZIP"
+            logger.info(f"Skip existed file '{self.manga_title}.zip'")
+            return
 
         if self._is_epub and os.path.exists(epub_path):
-            return "Exist EPUB"
-
-        if not os.path.exists(self.manga_path):
-            os.mkdir(self.manga_path)
+            logger.info(f"Skip existed file '{self.manga_title}.epub'")
+            return
 
         if not os.path.exists(self._download_path):
             os.mkdir(self._download_path)
 
-        await self._create_download_thread()
+        await self._start_task_queue()
+        return
 
-    async def _info_init(self, url: str, _retry = 3):
-        if _retry == 0:
-            raise TimeoutError
+    async def _info_init(self, url: str, retries=5, delay=3):
+        timeout = aiohttp.ClientTimeout(total=10)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers = self._headers, proxy = self._proxy) as resp:
-                if resp.status == 200:
-                    # get full title
-                    match = r'\*|\||\?|– Telegraph| |/|:'
-                    sub = {'*': '٭', '|': '丨', '?': '？', '– Telegraph': '', ' ': '', '/': 'ǀ', ':': '∶'}
-                    title_raw = BeautifulSoup(await resp.text(), 'html.parser').find("title").text
-                    image_list = re.findall(r'img src="(.*?)"', await resp.text())
+        for attempt in range(retries):
+            try:
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(url=url, headers=self._headers, proxy=self._proxy) as resp:
+                        if resp.status == 200:
+                            # get full title
+                            match = r'\*|\||\?|– Telegraph| |/|:'
+                            sub = {'*': '٭', '|': '丨', '?': '？', '– Telegraph': '', ' ': '', '/': 'ǀ', ':': '∶'}
+                            title_raw = BeautifulSoup(await resp.text(), 'html.parser').find("title").text
+                            image_list = re.findall(r'img src="(.*?)"', await resp.text())
 
-                    self._image_url_list = ['https://telegra.ph' + url for url in image_list]
-                    self.full_title = re.sub(match, lambda x: sub[x.group()], title_raw)
+                            self._image_url_list = ['https://telegra.ph' + url for url in image_list]
+                            self.full_title = re.sub(match, lambda x: sub[x.group()], title_raw)
 
-                    logger.info(f"Start job for '{self.full_title}'")
+                            logger.info(f"Start job for '{self.full_title}'")
 
-                    # find manga title
-                    title_match = re.search(r'](.*?\(.*?\))', self.full_title)
+                            # find manga title
+                            title_match = re.search(r'](.*?\(.*?\))', self.full_title)
 
-                    if not title_match:
-                        title_match = re.search(r'](.*?)[(\[]', self.full_title)
+                            if not title_match:
+                                title_match = re.search(r'](.*?)[(\[]', self.full_title)
 
-                    if not title_match:
-                        title_match = re.search(r"](.*)", self.full_title)
+                            if not title_match:
+                                title_match = re.search(r"](.*)", self.full_title)
 
-                    self.manga_title = title_match.group(1) if title_match else self.full_title
+                            self.manga_title = title_match.group(1) if title_match else self.full_title
 
-                    # find artist
-                    artist_match = re.search(r'\[(.*?)(?:\((.*?)\))?]', self.full_title)
+                            # find artist
+                            artist_match = re.search(r'\[(.*?)(?:\((.*?)\))?]', self.full_title)
 
-                    if artist_match:
-                        self.artist_name = artist_match.group(2) if artist_match.group(2) else artist_match.group(1)
-                    else:
-                        self.artist_name = 'その他'
+                            if artist_match:
+                                try_match = artist_match.group(2)
+                                self.artist_name = try_match if try_match else artist_match.group(1)
+                            else:
+                                self.artist_name = 'その他'
 
-                    # confirm manga path
-                    if self.artist_name in ['Fanbox', 'FANBOX', 'FanBox', 'Pixiv', 'PIXIV']:
-                        self.manga_path = os.path.join(self.komga_folder, self.manga_title)
-                    else:
-                        self.manga_path = os.path.join(self.komga_folder, self.artist_name)
+                            # confirm manga path
+                            if self.artist_name in ['Fanbox', 'FANBOX', 'FanBox', 'Pixiv', 'PIXIV']:
+                                self.manga_path = os.path.join(self.komga_folder, self.manga_title)
+                            else:
+                                self.manga_path = os.path.join(self.komga_folder, self.artist_name)
 
-                    if self._is_epub:
-                        self.manga_path = os.path.join(self.epub_folder, self.artist_name)
+                            if self._is_epub:
+                                self.manga_path = os.path.join(self.epub_folder, self.artist_name)
 
-                    if self._is_zip:
-                        self.manga_path = os.path.join(self.komga_folder, self.artist_name)
+                            if self._is_zip:
+                                self.manga_path = os.path.join(self.komga_folder, self.artist_name)
 
-                    return
+                            self._download_path = os.path.join(self._temp_folder, self.manga_title)
+                            return "OK"
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Info init failed")
+                    return "ERROR"
 
-                await self._info_init(url, _retry - 1)
-
-    async def _image_downloader(self, session, url, image_path, _retry) -> None:
-        if os.path.exists(image_path):
-            return
-
-        if _retry == 0:
+    async def _write_image(self, session, url, image_path) -> None:
+        if os.path.exists(image_path) and os.path.getsize(image_path) != 0:
             return
 
         async with session.get(url, headers = self._headers, proxy = self._proxy) as resp:
             if resp.status == 200:
                 async with aiofiles.open(image_path, 'wb') as f:
                     await f.write(await resp.read())
-                return
 
-            await self._image_downloader(session, url, image_path, _retry - 1)
+    async def _check_integrity(self, times = 1) -> str:
+        if not os.path.exists(self._download_path):
+            return "Empty"
 
-    async def _check_integrity(self) -> str:
-        image_files = [file for file in os.listdir(self._download_path) if file.endswith(".jpg")]
-        empty_files = [file for file in image_files if os.path.getsize(os.path.join(self._download_path, file)) == 0]
+        images = [file for file in os.listdir(self._download_path) if file.endswith(".jpg")]
+        empty = [file for file in images if os.path.getsize(os.path.join(self._download_path, file)) == 0]
 
-        if len(empty_files) in range(1, 11):
-            logger.warning(f"Find {self.manga_title} has {len(empty_files)} empty images, "
-                           f"try to download again")
-            await self._create_download_thread()
-            await self._check_integrity()
-
-        if len(empty_files) > 10:
-            logger.error(f"Downloaded images from '{self.full_title}' "
-                         f"are very corrupt which beyond the scope of compensation, "
-                         f"having {len(empty_files)} empty images")
-            return 'Deprecated'
+        if len(empty) != 0:
+            logger.warning(f"There are {len(empty)} broken images from {self.manga_title}, retrying {times}")
+            await asyncio.sleep(10)
+            await self._start_task_queue()
+            await self._check_integrity(times = times + 1)
 
         return 'Completed'
 
     async def _create_zip(self):
         output = os.path.join(self.manga_path, self.manga_title) + '.zip'
+
+        if not os.path.exists(self.manga_path):
+            os.mkdir(self.manga_path)
 
         with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as output_zip:
             for root, _, files in os.walk(self._download_path):
@@ -216,6 +248,9 @@ class Telegraph:
         manga.add_item(epub.EpubNav())
         manga.add_item(epub.EpubNcx())
 
+        if not os.path.exists(self.manga_path):
+            os.mkdir(self.manga_path)
+
         os.chdir(self.manga_path)
         epub.write_epub(self.manga_title + '.epub', manga, {})
         os.chdir(self._current_working_dir)
@@ -227,32 +262,31 @@ class Telegraph:
         if self._is_zip:
             self._target_function = self._create_zip
 
-        elif self._is_epub:
+        if self._is_epub:
             self._target_function = self._create_epub
 
-        await self._info_init(url)
+        info_return = await self._info_init(url)
 
-        if await self._create_download_task() == "Exist ZIP":
-            logger.info(f"Skip existed file '{self.manga_title}.zip'")
-            return
+        if info_return == "OK":
+            await self._create_task()
 
-        elif await self._create_download_task() == "Exist Epub":
-            logger.info(f"Skip existed file '{self.manga_title}.epub'")
-            return
+            check_return = await self._check_integrity()
 
-        if await self._check_integrity() == 'Completed':
-            await self._target_function()
+            if check_return == "Empty":
+                return "OK"
 
-        elif await self._check_integrity() == 'Deprecated':
-            shutil.move(self._temp_folder, self._deprecated_folder)
+            if check_return == 'Completed':
+                await self._target_function()
+        else:
+            return "ERROR"
 
     async def pack_to_epub(self, url: str):
         self._is_epub = True
-        await self._start_process(url)
+        return await self._start_process(url)
 
     async def sync_to_library(self, url: str):
         self._is_zip = True
-        await self._start_process(url)
+        return await self._start_process(url)
 
     async def get_basic_info(self, url: str):
-        await self._info_init(url)
+        return await self._info_init(url)
