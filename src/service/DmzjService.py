@@ -1,6 +1,15 @@
 from src.api.dmzj.ComicApi import ComicApi
 
+
 if __name__ == "__main__":
     comic = ComicApi()
-    info = comic.comic_chapter_detail(60632, 131618)
-    pass
+    random = comic.random()
+    hot = comic.hot()
+    carousel = comic.carousel()
+    subject = comic.subject()
+    category = comic.category()
+    filter = comic.filter(tag_id = 3243, sort = 1)
+    related = comic.related(id = filter[0]['id'])
+    search = comic.search(query = '86')
+    detail = comic.manga_detail(id = 74429)
+    author = comic.author(author_tag_id = "11451")

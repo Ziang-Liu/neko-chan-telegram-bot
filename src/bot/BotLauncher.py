@@ -16,7 +16,7 @@ from telegram.ext import (
 from urlextract import URLExtract
 
 from src.bot.Environment import EnvironmentReader
-from src.service.ImageSearchService import ImageSearch
+from src.service.ImageSearchService import AggregationSearch
 from src.service.TelegraphService import Telegraph
 from src.utils.LoggerUtil import logger
 
@@ -70,7 +70,8 @@ async def fetch_telegraph_link(update: Update, context: ContextTypes.DEFAULT_TYP
     contained telegraph links to the queue
     """
     if update.message.from_user.id == myself:
-        logger.info(f"USER {myself}: {update.message.text.replace('\n', '->')}")
+        log_message = update.message.text.replace('\n', '->')
+        logger.info(f"USER {myself}: {log_message}")
         urls = URLExtract().find_urls(update.message.text_markdown)
         [telegraph_queue.put(url) for url in [url for url in urls if "telegra.ph" in url]]
 
@@ -87,17 +88,18 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id = update.message.chat_id, document = book,
                 read_timeout = 60, connect_timeout = 60, write_timeout = 60)
 
-    logger.info(f"USER {update.message.from_user.id}: {update.message.text.replace('\n', '->')}")
+    log_message = update.message.text.replace('\n', '->')
+    logger.info(f"USER {update.message.from_user.id}: {log_message}")
     urls = URLExtract().find_urls(update.message.text_markdown)
 
     epub = Telegraph()
     epub.download_path = epub_path
     epub._threads = threads
     epub._proxy = {"http": proxy, "https": proxy}
-    epub.url = next((url for url in urls if "telegra.ph" in url), None)
-    epub.get_basic_info()
+    url = next((url for url in urls if "telegra.ph" in url), None)
+    epub.get_basic_info(url)
 
-    if epub.url is None:
+    if url is None:
         await update.message.reply_text("I can not find valid link 🤔")
 
     for file in os.listdir(epub.download_path):
@@ -106,7 +108,7 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             return ConversationHandler.END
 
-    epub.pack_to_epub()
+    epub.pack_to_epub(url)
     await upload()
 
     return ConversationHandler.END
@@ -123,18 +125,16 @@ async def fetch_image_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def image_search(update: Update):
     while True:
-        async def search_thread(image_queue):
-            search = ImageSearch()
-            search.input_url = image_queue.get()
-            search.proxy = proxy
-            await search.sync()
+        async def search_thread(queue):
+            search = AggregationSearch()
+            await search.iqdb_search(queue.get(), proxy)
 
-            if search.iqdb_similarity >= 80.0:
+            if search.similarity >= 80.0:
                 await update.message.reply_markdown(
                     f"🔎 **_Auto image search result_**\n"
-                    f"🖼️ [Image]({search.iqdb_url}) from "
-                    f"{search.iqdb_source} with {search.iqdb_similarity}% similarity, "
-                    f"size {search.iqdb_size}")
+                    f"🖼️ [Image]({search.url}) from "
+                    f"{search.source} with {search.similarity}% similarity, "
+                    f"size {search.image_size}")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
             future_to_queue = {executor.submit(search_thread)}
@@ -174,10 +174,9 @@ def telegraph_thread(queue_input):
     while True:
         down_instance = Telegraph()
         down_instance.download_path = komga_path
-        down_instance.url = queue_input.get()
         down_instance._threads = threads
         down_instance._proxy = {"http": proxy, "https": proxy}
-        down_instance.sync_to_library()
+        down_instance.sync_to_library(queue_input.get())
 
 
 if __name__ == "__main__":
