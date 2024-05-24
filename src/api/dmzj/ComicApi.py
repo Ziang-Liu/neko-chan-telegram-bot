@@ -5,7 +5,7 @@ import aiohttp
 from fake_useragent import UserAgent
 
 from src.api.dmzj.crypto import Crypto
-from src.utils.LoggerUtil import logger
+from src.utils.Logger import logger
 
 
 class ComicApi:

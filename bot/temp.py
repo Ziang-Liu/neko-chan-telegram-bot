@@ -15,10 +15,10 @@ from telegram.ext import (
 )
 from urlextract import URLExtract
 
-from src.bot.Environment import EnvironmentReader
-from src.service.ImageSearchService import AggregationSearch
-from src.service.TelegraphService import Telegraph
-from src.utils.LoggerUtil import logger
+from src.Environment import EnvironmentReader
+from src.service.Search import AggregationSearch
+from src.service.Telegraph import Telegraph
+from src.utils.Logger import logger
 
 constants = EnvironmentReader()
 bot_token = constants.get_variable('BOT_TOKEN')
@@ -82,7 +82,7 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     be downloaded and converted to epub from telegraph link then upload it to the user
     """
     async def upload():
-        with open(os.path.join(epub.download_path, epub.full_title + '.epub'), 'rb') as book:
+        with open(os.path.join(epub.download_path, epub.title_raw + '.epub'), 'rb') as book:
             logger.info(f"USER {update.message.from_user.id}: Send epub '{file}'")
             await context.bot.send_document(
                 chat_id = update.message.chat_id, document = book,
@@ -97,18 +97,18 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     epub._threads = threads
     epub._proxy = {"http": proxy, "https": proxy}
     url = next((url for url in urls if "telegra.ph" in url), None)
-    epub.get_basic_info(url)
+    epub.get_info(url)
 
     if url is None:
         await update.message.reply_text("I can not find valid link 🤔")
 
     for file in os.listdir(epub.download_path):
-        if epub.full_title + '.epub' == file:
+        if epub.title_raw + '.epub' == file:
             await upload()
 
             return ConversationHandler.END
 
-    epub.pack_to_epub(url)
+    epub.get_epub(url)
     await upload()
 
     return ConversationHandler.END
@@ -176,7 +176,7 @@ def telegraph_thread(queue_input):
         down_instance.download_path = komga_path
         down_instance._threads = threads
         down_instance._proxy = {"http": proxy, "https": proxy}
-        down_instance.sync_to_library(queue_input.get())
+        down_instance.get_zip(queue_input.get())
 
 
 if __name__ == "__main__":
