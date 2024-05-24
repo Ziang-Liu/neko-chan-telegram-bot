@@ -11,9 +11,9 @@ services:
       - 'PUID=1000'
       - 'PGID=1000'
       - 'BOT_TOKEN='
-      - 'USER_ID='
+      - 'MY_USER_ID='
       - 'TZ=Asia/Shanghai'
-      - 'DOWNLOAD_THREADS='
-      - 'PROXY_URL='
+      - 'TELEGRAPH_THREADS='
+      - 'HTTP_PROXY='
     volumes:
-      - /path/to/download:/download
+      - /path/to/download:/media

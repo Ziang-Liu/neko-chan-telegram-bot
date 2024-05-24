@@ -1,13 +1,15 @@
 import os
 
-from src.utils.LoggerUtil import logger
+import httpx
+
+from src.utils.Logger import logger
 
 
 class EnvironmentReader:
     def __init__(self):
         # bot params
-        self.BOT_TOKEN = str(os.getenv('BOT_TOKEN', ''))
-        self.SELF_USER_ID = int(os.getenv('SELF_USER_ID', -1))
+        self.BOT_TOKEN: str | None = os.getenv('BOT_TOKEN', None)
+        self.MY_USER_ID: int | None = os.getenv('MY_USER_ID', None)
         # basic working dirs
         self.BASE_DIR = os.getenv('BASE_DIR', '/media')
         os.makedirs(name = self.BASE_DIR, exist_ok = True, mode = 0o777)
@@ -17,12 +19,12 @@ class EnvironmentReader:
         self.EPUB_PATH = os.getenv('EPUB_PATH', f'{self.BASE_DIR}/epub/')
         self.TEMP_PATH = os.getenv('TEMP_PATH', f'{self.BASE_DIR}/.temp/')
         # other
-        self.HTTP_PROXY: None | str = os.getenv('HTTP_PROXY', None)
+        self.HTTP_PROXY: str | None | httpx.Proxy | httpx.URL = os.getenv('HTTP_PROXY', 'http://localhost:7890')
         self.TELEGRAPH_THREADS = int(os.getenv('TELEGRAPH_THREADS', 8))
 
     def print_env(self):
         logger.info(f'BOT_TOKEN: {self.BOT_TOKEN}')
-        logger.info(f'SELF_USER_ID: {self.SELF_USER_ID}')
+        logger.info(f'SELF_USER_ID: {self.MY_USER_ID}')
         logger.info(f'HTTP_PROXY: {self.HTTP_PROXY}')
 
     def print_attribute(self, attribute_name):
