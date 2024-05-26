@@ -1,4 +1,5 @@
 import asyncio
+from httpx import Proxy
 from typing import (
     Dict,
     Optional, Any, )
@@ -26,7 +27,7 @@ def parse_cookies(cookies_str: Optional[str] = None) -> Dict[str, str]:
 
 
 class AggregationSearch:
-    def __init__(self, proxy: None | str = None):
+    def __init__(self, proxy: None | Proxy = None):
         self.preview_link = str()
         self.results = dict()
         self._proxy = proxy

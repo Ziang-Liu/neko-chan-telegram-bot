@@ -1,6 +1,6 @@
 import asyncio
 import re
-
+from httpx import Proxy
 import aiohttp
 from fake_useragent import UserAgent
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,7 +11,7 @@ from src.service.Search import AggregationSearch
 
 
 class Search:
-    def __init__(self, proxy: None | str = None):
+    def __init__(self, proxy: None | Proxy = None):
         self._proxy = proxy
         self._headers = {'User-Agent': UserAgent().random}
 

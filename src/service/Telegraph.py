@@ -13,6 +13,7 @@ from fake_useragent import UserAgent
 
 from src.Environment import EnvironmentReader
 from src.utils.Logger import logger
+from src.utils.Proxy import proxy_init
 
 
 class Telegraph:
@@ -26,7 +27,8 @@ class Telegraph:
         env = EnvironmentReader()
 
         # network params
-        self._proxy = env.get_variable("HTTP_PROXY")
+        proxy_url = env.get_variable("PROXY")
+        self._proxy = proxy_init(proxy_url)
         self._thread = env.get_variable("TELEGRAPH_THREADS")
         self._headers = {'User-Agent': UserAgent().random}
 

@@ -81,6 +81,7 @@ async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handled by epub_handler, search local directory for existed epub or
     be downloaded and converted to epub from telegraph link then upload it to the user
     """
+
     async def upload():
         with open(os.path.join(epub.download_path, epub.title_raw + '.epub'), 'rb') as book:
             logger.info(f"USER {update.message.from_user.id}: Send epub '{file}'")

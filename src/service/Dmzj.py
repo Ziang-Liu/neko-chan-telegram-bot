@@ -1,6 +1,5 @@
 from src.api.dmzj.ComicApi import ComicApi
 
-
 if __name__ == "__main__":
     comic = ComicApi()
     random = comic.random()
