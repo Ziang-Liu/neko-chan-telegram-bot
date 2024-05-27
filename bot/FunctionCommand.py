@@ -1,13 +1,16 @@
 import asyncio
 import re
-from httpx import Proxy
+from typing import Optional
+
 import aiohttp
 from fake_useragent import UserAgent
+from httpx import Proxy
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram._message import Sticker, Document, PhotoSize
 from telegram.ext import ContextTypes, ConversationHandler
 
 from src.service.Search import AggregationSearch
+from src.utils.Logger import logger
 
 
 class Search:
@@ -25,25 +28,44 @@ class Search:
             raise aiohttp.ClientError
 
     async def query(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        async def ascii2d_search(url) -> tuple[str, InlineKeyboardMarkup] | tuple[None, None]:
+        async def search(url) -> tuple[str, Optional[InlineKeyboardMarkup]]:
             search_instance = AggregationSearch(proxy = self._proxy)
-            result = await search_instance.ascii2d_search(url)
-            if result:
-                search_thumb = result['thumbnail']
-                search_url = result['url']
-                search_author = result['author']
-                search_author_url = result['author_url']
-                message = f"[🖼️]({search_thumb}) Gacha (>ワ<)，完美匹配😼"
-                button = [
-                    [InlineKeyboardButton("Original", url = search_url)],
-                    [InlineKeyboardButton(f"{search_author}", url = search_author_url)]
-                ]
-                reply_markup = InlineKeyboardMarkup(button)
-                return message, reply_markup
-            else:
-                return None, None
+            result = await search_instance.aggregation_search(url)
 
+            if result:
+                search_url = result['url']
+                search_thumb = result['thumbnail']
+                message = f"[🖼️]({search_url}) Gacha (>ワ<) [😼]({search_thumb})"
+
+                if result["class"] == "iqdb":
+                    search_similarity = result['similarity']
+                    search_source = result['source']
+                    button = [
+                        [InlineKeyboardButton(f"{search_source}: {search_similarity}% Match", url = search_url)]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(button)
+                    return message, reply_markup
+
+                if result["class"] == "ascii2d":
+                    search_author = result['author']
+                    search_author_url = result['author_url']
+                    button = [
+                        [InlineKeyboardButton("Original", url = search_url)],
+                        [InlineKeyboardButton(f"{search_author}", url = search_author_url)]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(button)
+                    return message, reply_markup
+            else:
+                logger.info(f"No accurate results for {url}")
+                message = "Not found 😿"
+                return message, None
+
+        # hey, start here c:
         if update.message.reply_to_message:
+            user = update.message.from_user.username
+            user_replied_to = update.message.reply_to_message.from_user.username
+            logger.info(f"{user} replied to {user_replied_to}: "
+                        f"{update.message.text} with update_id {update.update_id}")
             reply_link_preview = update.message.reply_to_message.link_preview_options
             attachment = update.message.reply_to_message.effective_attachment
 
@@ -52,22 +74,22 @@ class Search:
                     await update.message.reply_text("Why you use result to search 🤔?")
                 else:
                     link_url = await self.get_image_url(reply_link_preview.url)
-                    msg, mark = await ascii2d_search(link_url)
-                    if msg:
-                        await update.message.reply_markdown(text = msg)
+                    msg, mark = await search(link_url)
+                    await update.message.reply_markdown(text = msg)
 
             if isinstance(attachment, tuple):
                 if isinstance(attachment[0], PhotoSize):
-                    msg, mark = await ascii2d_search(
-                        (await context.bot.get_file(attachment[2].file_id)).file_path)
-                    if msg:
-                        await update.message.reply_markdown(text = msg, reply_markup = mark)
+                    file_link = (await context.bot.get_file(attachment[2].file_id)).file_path
+                    logger.info(f"{user} want to search image {attachment[2].file_id}")
+                    msg, mark = await search(file_link)
+                    await update.message.reply_markdown(text = msg, reply_markup = mark)
 
             if isinstance(attachment, Sticker):
                 sticker_url = (await context.bot.get_file(attachment.file_id)).file_path
+                logger.info(f"{user} want sticker {attachment.file_unique_id}")
                 sticker_instance = AggregationSearch(proxy = self._proxy)
-                await sticker_instance.get_media_bytes(sticker_url)
-                media = sticker_instance.image_raw
+                await sticker_instance.get_media(sticker_url)
+                media = sticker_instance.image_byte
 
                 if attachment.is_video:
                     filename = attachment.file_unique_id + '.webm'
@@ -77,9 +99,11 @@ class Search:
 
             if isinstance(attachment, Document):
                 if "image" in attachment.mime_type:
-                    msg, mark = await ascii2d_search(
-                        (await context.bot.get_file(attachment.thumbnail.file_id)).file_path)
-                    if msg:
-                        await update.message.reply_markdown(text = msg, reply_markup = mark)
+                    file_link = (await context.bot.get_file(attachment.thumbnail.file_id)).file_path
+                    logger.info(f"{user} want to search image(document) {attachment.thumbnail.file_id}")
+                    msg, mark = await search(file_link)
+                    await update.message.reply_markdown(text = msg, reply_markup = mark)
+        else:
+            await update.message.reply_text("Suki 🤗")
 
         return ConversationHandler.END
