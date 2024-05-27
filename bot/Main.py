@@ -1,8 +1,8 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ConversationHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, filters
 
 import bot.BasicCommand as Basic
-from bot.FunctionCommand import Search
+from bot.FunctionCommand import PandoraBox
 from src.Environment import EnvironmentReader
 from src.utils.Logger import logger
 from src.utils.Proxy import proxy_init
@@ -36,29 +36,22 @@ if __name__ == "__main__":
 
     # Hello there? Neko Chan is built!!!
     neko_chan = ApplicationBuilder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build()
-    pandora = Search(proxy)
 
-    # Command Handlers
+    # Base Handlers
     command_start = CommandHandler("start", Basic.introduce)
     command_help = CommandHandler("help", Basic.instructions)
-    how_to_cheat_neko_chan = []
-
-    for action in ["hug", "cuddle", "kiss", "snog", "pet"]:
-        how_to_cheat_neko_chan.append(
-            CommandHandler(command = action, callback = pandora.query)
-        )
-
-    # Conversation Handlers
-    cheat_neko_chan = ConversationHandler(
-        entry_points = how_to_cheat_neko_chan,
-        states = {},
-        fallbacks = [],
-    )
-
-    # Add handlers
     neko_chan.add_handler(command_start)
     neko_chan.add_handler(command_help)
-    neko_chan.add_handler(cheat_neko_chan)
+
+    # Featured Handlers
+    pandora = PandoraBox(proxy)
+
+    neko_chan.add_handler(
+        CommandHandler(
+            command = ["hug", "cuddle", "kiss", "snog", "pet"], callback = pandora.query,
+            filters = filters.REPLY
+        )
+    )
 
     try:
         env.print_env()

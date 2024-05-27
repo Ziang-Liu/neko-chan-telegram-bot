@@ -12,8 +12,6 @@ from fake_useragent import UserAgent
 from httpx import Proxy
 from httpx import URL, AsyncClient
 
-from src.utils.Logger import logger
-
 
 def parse_cookies(cookies_str: Optional[str] = None) -> Dict[str, str]:
     cookies_dict: Dict[str, str] = {}
@@ -46,10 +44,10 @@ class AggregationSearch:
         ) as client:
             resp = await client.get(_url)
 
-            if resp.status_code >= 400:
+            if resp.status_code != 200:
                 return resp.status_code
 
-        self.image_byte = resp.content
+            self.image_byte = resp.content
 
         return 200
 
@@ -57,20 +55,19 @@ class AggregationSearch:
         async with Network(proxies = self._proxy) as client:
             search_instance = client_class(client = client)
 
-            if self.image_byte == b'':
+            if not self.image_byte:
                 status = await self.get_media(url = url)
 
                 if status != 200:
                     if not _retry:
-                        return await self._search_with_type(url, search_func, client_class, _retry = True)
+                        await self._search_with_type(url, search_func, client_class, _retry = True)
                     else:
-                        logger.error(f"Request {status}")
-                        return None
+                        raise aiohttp.ClientError(f"Return status code {status}")
 
             results = await search_func(search_instance, file = self.image_byte)
 
             if not results.raw:
-                return None
+                return
 
             if client_class == Ascii2D:
                 resp_text, resp_url, _ = await search_instance.get(results.url.replace("/color/", "/bovw/"))
@@ -83,10 +80,6 @@ class AggregationSearch:
                 return await self._format_iqdb_result(results)
 
     async def _format_iqdb_result(self, resp: IqdbResponse):
-        if not resp.raw:
-            logger.info(f"Search through iqdb returns nothing, URL: {resp.url}")
-            return None
-
         selected_res = resp.raw[0]
         danbooru_res_list = [i for i in resp.raw if i.source == "Danbooru"]
         yandere_res_list = [i for i in resp.raw if i.source == "yande.re"]
@@ -97,7 +90,7 @@ class AggregationSearch:
             selected_res = yandere_res_list[0]
 
         if selected_res.similarity < 85.0:
-            return None
+            return
 
         self.iqdb_result["class"] = "iqdb"
         self.iqdb_result["url"] = selected_res.url
@@ -105,8 +98,6 @@ class AggregationSearch:
         self.iqdb_result["thumbnail"] = selected_res.thumbnail
         self.iqdb_result["content"] = selected_res.content
         self.iqdb_result["source"] = selected_res.source
-
-        return self.iqdb_result
 
     async def _format_ascii2d_result(self, resp: Ascii2DResponse, bovw: bool = False):
         target_dict = self.ascii2d_result_bovw if bovw else self.ascii2d_result
@@ -127,18 +118,14 @@ class AggregationSearch:
                 break
 
     async def iqdb_search(self, url: str, _retry = False):
-        result = await self._search_with_type(url, Iqdb.search, Iqdb, _retry)
-
-        if not result:
-            return None
-
+        await self._search_with_type(url, Iqdb.search, Iqdb, _retry)
         return self.iqdb_result
 
-    async def ascii2d_search(self, url, _retry = False) -> dict[Any] | None:
-        result = await self._search_with_type(url, Ascii2D.search, Ascii2D, _retry)
+    async def ascii2d_search(self, url, _retry = False):
+        await self._search_with_type(url, Ascii2D.search, Ascii2D, _retry)
 
-        if not result:
-            return None
+        if not self.ascii2d_result:
+            return
 
         for i in range(len(self.ascii2d_result)):
             if self.ascii2d_result[i]["url"] != "":

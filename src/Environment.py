@@ -25,7 +25,7 @@ class EnvironmentReader:
         logger.info("---------------Environment variables---------------")
         logger.info(f"Bot token: {self.BOT_TOKEN}")
         logger.info(f"Master's user id: {self.MY_USER_ID}")
-        logger.info(f"Http Proxy: {self.PROXY}")
+        logger.info(f"Proxy: {self.PROXY}")
         logger.info(f"Telegraph threads: {self.TELEGRAPH_THREADS}")
         logger.info("---------------------------------------------------")
 
