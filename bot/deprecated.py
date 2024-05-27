@@ -124,28 +124,6 @@ async def fetch_image_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_queue.put(image_url)
 
 
-async def image_search(update: Update):
-    while True:
-        async def search_thread(queue):
-            search = AggregationSearch()
-            await search.iqdb_search(queue.get(), proxy)
-
-            if search.similarity >= 80.0:
-                await update.message.reply_markdown(
-                    f"🔎 **_Auto image search result_**\n"
-                    f"🖼️ [Image]({search.url}) from "
-                    f"{search.source} with {search.similarity}% similarity, "
-                    f"size {search.image_size}")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
-            future_to_queue = {executor.submit(search_thread)}
-
-            for future in concurrent.futures.as_completed(future_to_queue):
-                await future.result()
-
-        await asyncio.sleep(5)
-
-
 async def monitor_finish(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"USER {update.message.from_user.id} finish monitoring service")
     await update.message.reply_text('See you next time 😊')

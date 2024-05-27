@@ -7,8 +7,10 @@ from fake_useragent import UserAgent
 from httpx import Proxy
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, filters
+from urlextract import URLExtract
 
 from src.service.Search import AggregationSearch
+from src.service.Telegraph import Telegraph
 from src.utils.Logger import logger
 
 
@@ -60,6 +62,10 @@ class PandoraBox:
                 return message, reply_markup
 
         # hey, start here c:
+        if not filters.REPLY.filter(update.message):
+            await update.message.reply_text("Meow")  # have no logics yet
+            return ConversationHandler.END
+
         user = update.message.from_user.username
         user_replied_to = update.message.reply_to_message.from_user.username
         logger.info(f"{user} replied to {user_replied_to}: "
@@ -68,12 +74,10 @@ class PandoraBox:
         link_preview = update.message.reply_to_message.link_preview_options
         attachment = update.message.reply_to_message.effective_attachment
 
-        if not filters.REPLY.filter(update.message):
-            return ConversationHandler.END
-
         if link_preview:
             if "danbooru" or "x" or "pixiv" or "twitter" in link_preview.url:
-                await update.message.reply_text("Why you use result to search 🤔?", do_quote=False)
+                msg = "Why you use result to search 🤔?"
+                await update.message.reply_text(text = msg, do_quote = False)
             else:
                 link_url = await self.get_image_url(link_preview.url)
                 msg, mark = await search(link_url)
@@ -117,6 +121,64 @@ class PandoraBox:
 
             return ConversationHandler.END
         else:
-            await update.message.reply_text("这是什么OwO（欲哭无泪）", do_quote = False)
+            await update.message.reply_text("这是什么 OwO（欲哭无泪）", do_quote = False)
 
         return ConversationHandler.END
+
+
+(KOMGA) = range(1)
+
+
+class TelegraphHandler:
+    def __init__(self, proxy: None | Proxy = None, user_id: int = -1):
+        self._proxy = proxy
+        self._user_id = user_id
+        self._epub_task_queue = asyncio.Queue()
+        self._komga_task_queue = asyncio.Queue()
+
+        komga_loop = asyncio.get_event_loop()
+        komga_loop.create_task(self._run_komga_task_periodically())
+
+    async def _run_komga_task_periodically(self):
+        async def process_queue(queue, num_tasks):
+            tasks = [Telegraph(await queue.get()) for _ in range(num_tasks)]
+            await asyncio.gather(*[task.get_zip() for task in tasks])
+
+        while True:
+            queue_size = self._komga_task_queue.qsize()
+            logger.info(f"[Komga Sync Service]: current queue size: {queue_size}")
+
+            if queue_size == 1:
+                instance = Telegraph(await self._komga_task_queue.get())
+                await asyncio.create_task(instance.get_zip())
+            elif 2 <= queue_size <= 9:
+                await process_queue(self._komga_task_queue, 3)
+            elif queue_size >= 10:
+                await process_queue(self._komga_task_queue, 4)
+
+            await asyncio.sleep(60)  # check every minute
+
+    async def _get_link(self, is_epub = False, content = None):
+        telegra_ph_links = URLExtract().find_urls(content)
+        target_link = next((url for url in telegra_ph_links if "telegra.ph" in url), None)
+
+        if target_link and not is_epub:
+            return await self._komga_task_queue.put(target_link)
+
+        if target_link and is_epub:
+            return await self._epub_task_queue.put(target_link)
+
+    async def komga_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.message.from_user.id != self._user_id:
+            msg = f"だめですよ~ XwX, {update.message.from_user.username}"
+            await update.message.reply_text(text = msg, do_quote = False)
+
+            return ConversationHandler.END
+
+        msg = f"{update.message.from_user.username}, 把 telegraph 链接端上来罢 ฅ(＾・ω・＾ฅ)"
+        await update.message.reply_text(text = msg, do_quote = False)
+
+        return KOMGA
+
+    async def get_link(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await self._get_link(content = update.message.text_markdown)
