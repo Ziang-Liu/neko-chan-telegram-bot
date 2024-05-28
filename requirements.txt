@@ -1,0 +1,12 @@
+aiofiles
+aiohttp
+beautifulsoup4
+cryptography
+EbookLib
+fake-useragent
+httpx[socks]~=0.27.0
+PicImageSearch~=3.10.3
+pydantic
+python-telegram-bot[socks] ~= 21.2
+urlextract
+Pillow
