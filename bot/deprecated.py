@@ -1,194 +1,69 @@
-import asyncio
-import concurrent.futures
-import os
-import threading
-from queue import Queue
+#!/usr/bin/env python
+# pylint: disable=unused-argument
+# This program is dedicated to the public domain under the CC0 license.
 
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-    ConversationHandler,
-    MessageHandler,
-    filters,
+"""
+Basic example for a bot that uses inline keyboards. For an in-depth explanation, check out
+ https://github.com/python-telegram-bot/python-telegram-bot/wiki/InlineKeyboard-Example.
+"""
+import logging
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-from urlextract import URLExtract
+# set higher logging level for httpx to avoid all GET and POST requests being logged
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-from src.Environment import EnvironmentReader
-from src.service.Search import AggregationSearch
-from src.service.Telegraph import Telegraph
-from src.utils.Logger import logger
-
-constants = EnvironmentReader()
-bot_token = constants.get_variable('BOT_TOKEN')
-proxy = constants.get_variable('HTTP_PROXY')
-myself = constants.get_variable('SELF_USER_ID')
-komga_path = constants.get_variable('KOMGA_PATH')
-epub_path = constants.get_variable('EPUB_PATH')
-threads = constants.get_variable('TELEGRAPH_MAX_THREAD')
-
-telegraph_queue = Queue()
-image_queue = Queue()
-
-(MONITOR, EPUB) = range(2)
+logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_markdown(
-        f"👀 Wink, {update.message.from_user.full_name}\n\n"
-        f"Here is Neko-Chan, designed to turn Telegraph links into local manga source "
-        f"that supports Komga and Tachiyomi, along with other useful features.\n\n"
-        f"_Command instructions_:\n"
-        f"`/monitor_start` : Start service for link fetching and image search, etc.\n"
-        f"`/monitor_finish` : Neko-Chan stop read messages.\n"
-        f"`/t2epub` : Read Telegraph link and send you converted epub book.\n\n"
-        f"This [project](https://github.com/Ziang-Liu/Neko-Chan) will add more features in the future, "
-        f"you can star it if you like this bot)."
-    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Sends a message with three inline buttons attached."""
+    keyboard = [
+        [
+            InlineKeyboardButton("Option 1", callback_data="1"),
+            InlineKeyboardButton("Option 2", callback_data="2"),
+        ],
+        [InlineKeyboardButton("Option 3", callback_data="3")],
+    ]
 
-    return ConversationHandler.END
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-
-async def monitor_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"USER {update.message.from_user.id}: start monitoring service")
-    await update.message.reply_text('I will monitor messages now 👋\nYou can use /monitor_finish to stop')
-
-    return MONITOR
+    await update.message.reply_text("Please choose:", reply_markup=reply_markup)
 
 
-async def t2epub(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"USER {update.message.from_user.id}: start epub service")
-    await update.message.reply_text("Send or forward me a telegraph manga post 😎")
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Parses the CallbackQuery and updates the message text."""
+    query = update.callback_query
 
-    return EPUB
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    await query.answer()
 
-
-async def fetch_telegraph_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handled by monitor_handler, only read specific user id's text message and add
-    contained telegraph links to the queue
-    """
-    if update.message.from_user.id == myself:
-        log_message = update.message.text.replace('\n', '->')
-        logger.info(f"USER {myself}: {log_message}")
-        urls = URLExtract().find_urls(update.message.text_markdown)
-        [telegraph_queue.put(url) for url in [url for url in urls if "telegra.ph" in url]]
+    await query.edit_message_text(text=f"Selected option: {query.data}")
 
 
-async def epub_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handled by epub_handler, search local directory for existed epub or
-    be downloaded and converted to epub from telegraph link then upload it to the user
-    """
-
-    async def upload():
-        with open(os.path.join(epub.download_path, epub.title_raw + '.epub'), 'rb') as book:
-            logger.info(f"USER {update.message.from_user.id}: Send epub '{file}'")
-            await context.bot.send_document(
-                chat_id = update.message.chat_id, document = book,
-                read_timeout = 60, connect_timeout = 60, write_timeout = 60)
-
-    log_message = update.message.text.replace('\n', '->')
-    logger.info(f"USER {update.message.from_user.id}: {log_message}")
-    urls = URLExtract().find_urls(update.message.text_markdown)
-
-    epub = Telegraph()
-    epub.download_path = epub_path
-    epub._threads = threads
-    epub._proxy = {"http": proxy, "https": proxy}
-    url = next((url for url in urls if "telegra.ph" in url), None)
-    epub.get_info(url)
-
-    if url is None:
-        await update.message.reply_text("I can not find valid link 🤔")
-
-    for file in os.listdir(epub.download_path):
-        if epub.title_raw + '.epub' == file:
-            await upload()
-
-            return ConversationHandler.END
-
-    epub.get_epub(url)
-    await upload()
-
-    return ConversationHandler.END
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Displays info on how to use the bot."""
+    await update.message.reply_text("Use /start to test this bot.")
 
 
-async def fetch_image_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handled by monitor_handler, use PicImageSearch API to search photo type messages
-    """
-    logger.info(f"USER {update.message.from_user.id}: IMAGE {update.message.photo[2].file_id}")
-    image_url = (await context.bot.get_file(update.message.photo[2].file_id)).file_path
-    image_queue.put(image_url)
+def main() -> None:
+    """Run the bot."""
+    # Create the Application and pass it your bot's token.
+    application = Application.builder().token("TOKEN").build()
 
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(CommandHandler("help", help_command))
 
-async def monitor_finish(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"USER {update.message.from_user.id} finish monitoring service")
-    await update.message.reply_text('See you next time 😊')
-
-    return ConversationHandler.END
-
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error("Exception while handling an update:", exc_info = context.error)
-
-
-async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"USER {update.message.from_user.id} trigger callback")
-    return ConversationHandler.END
-
-
-def create_thread(target, args):
-    thread = threading.Thread(target = target, args = args)
-    thread.daemon = True
-    thread.start()
-
-
-def telegraph_thread(queue_input):
-    """
-    Create a thread to monitor telegraph link queue and trigger pack_zip() task
-    """
-    while True:
-        down_instance = Telegraph()
-        down_instance.download_path = komga_path
-        down_instance._threads = threads
-        down_instance._proxy = {"http": proxy, "https": proxy}
-        down_instance.get_zip(queue_input.get())
+    # Run the bot until the user presses Ctrl-C
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
-    start_handler = ConversationHandler(
-        entry_points = [CommandHandler("start", start)],
-        states = {}, fallbacks = [])
-
-    monitor_handler = ConversationHandler(
-        entry_points = [CommandHandler("monitor_start", monitor_start)],
-        states = {
-            MONITOR: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, fetch_telegraph_link),
-                MessageHandler(filters.PHOTO & ~filters.COMMAND, fetch_image_link),
-                CommandHandler("monitor_finish", monitor_finish)]},
-        fallbacks = [])
-
-    epub_handler = ConversationHandler(
-        entry_points = [CommandHandler("t2epub", t2epub)],
-        states = {EPUB: [MessageHandler(filters.TEXT & ~filters.COMMAND, epub_upload)]},
-        fallbacks = [CommandHandler("cancel", callback)])
-
-    create_thread(target = telegraph_thread, args = (telegraph_queue,))
-
-    neko_chan = (ApplicationBuilder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build())
-    neko_chan.add_handler(start_handler)
-    neko_chan.add_handler(monitor_handler)
-    neko_chan.add_handler(epub_handler)
-    neko_chan.add_error_handler(error_handler)
-
-    try:
-        logger.info("Neko Chan, link start!!!")
-        neko_chan.run_polling(
-            allowed_updates = Update.ALL_TYPES, timeout = 60)
-    except Exception as exception:
-        logger.error(exception)
-        neko_chan.stop_running()
+    main()

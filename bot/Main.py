@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ConversationHandler, filters, MessageHandler
+from telegram.ext import Application, CommandHandler, ConversationHandler, filters, MessageHandler, CallbackQueryHandler
 
 import bot.BasicCommand as Basic
 from bot.FunctionCommand import PandoraBox, TelegraphHandler, KOMGA
@@ -8,6 +8,9 @@ from src.utils.Logger import logger
 from src.utils.Proxy import proxy_init
 
 if __name__ == "__main__":
+    def error_callback(error: Exception, application: Application) -> None:
+        application.create_task(application.process_error(update = None, error = error))
+
     logger.info("""
       _   _          _                 ____   _                      
      | \ | |   ___  | | __   ___      / ___| | |__     __ _   _ __   
@@ -17,30 +20,24 @@ if __name__ == "__main__":
     """)
     # import envs
     env = EnvironmentReader()
-    # bot_token = env.get_variable("BOT_TOKEN")
-    bot_token = "6707614408:AAHgM84j-lpvFr2wzDR-N42sdnEb4tsQrD0"
-    # myself_id = env.get_variable("MY_USER_ID")
-    myself_id = 5229239723
-    # proxy_env = env.get_variable("PROXY")
-    proxy_env = "http://127.0.0.1:7890"
+    bot_token = env.get_variable("BOT_TOKEN")
+    myself_id = env.get_variable("MY_USER_ID")
+    proxy_env = env.get_variable("PROXY")
 
     if not bot_token:
-        logger.error("Bot token not set, please fill right params and try again.")
+        logger.error("[Main]: Bot token not set, please fill right params and try again.")
         exit(1)
-
-    if not myself_id:
-        logger.warning("Master's user id not set, telegraph syncing service will not work.")
 
     # Hello there? Neko Chan is built!!!
     if proxy_env:
         proxy = proxy_init(proxy_env)
-        neko_chan = ApplicationBuilder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build()
+        neko_chan = Application.builder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build()
     else:
         proxy = None
-        neko_chan = ApplicationBuilder().token(bot_token).build()
+        neko_chan = Application.builder().token(bot_token).build()
 
     if not proxy:
-        logger.info("Proxy not set, make sure you can directly connect to telegram server.")
+        logger.info("[Main]: Proxy not set, make sure you can directly connect to telegram server.")
 
     # Base Handlers
     command_start = CommandHandler("start", Basic.introduce)
@@ -52,20 +49,24 @@ if __name__ == "__main__":
     pandora = PandoraBox(proxy)
     neko_chan.add_handler(
         CommandHandler(
-            command = ["hug", "cuddle", "kiss", "snog", "pet"], callback = pandora.query,
+            command = ["hug", "cuddle", "kiss", "snog", "pet"], callback = pandora.auto_parse_reply,
             filters = filters.REPLY | filters.TEXT
         )
     )
 
-    telegraph_tasks = TelegraphHandler(proxy = proxy, user_id = myself_id)
-    telegraph_message = ConversationHandler(
-        entry_points = [CommandHandler(command = "komga", callback = telegraph_tasks.komga_start)],
-        states = {
-            KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph_tasks.get_link)]
-        },
-        fallbacks = []
-    )
-    neko_chan.add_handler(telegraph_message)
+    if not myself_id:
+        logger.info("[Main]: Master's user id not set, telegraph syncing service will not work.")
+    else:
+        telegraph_tasks = TelegraphHandler(proxy = proxy, user_id = myself_id)
+        telegraph_message = ConversationHandler(
+            entry_points = [CommandHandler(command = "komga", callback = telegraph_tasks.komga_start)],
+            states = {
+                KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph_tasks.get_link)]
+            },
+            fallbacks = [],
+            conversation_timeout = 300
+        )
+        neko_chan.add_handler(telegraph_message)
 
     try:
         env.print_env()

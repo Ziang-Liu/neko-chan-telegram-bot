@@ -1,4 +1,5 @@
 import asyncio
+import random
 import re
 from typing import Optional
 
@@ -19,7 +20,7 @@ class PandoraBox:
         self._proxy = proxy
         self._headers = {'User-Agent': UserAgent().random}
 
-    async def get_image_url(self, query):
+    async def _get_image_url(self, query):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url = query, proxy = self._proxy, headers = self._headers) as resp:
@@ -28,19 +29,29 @@ class PandoraBox:
         except (aiohttp.ClientError, asyncio.TimeoutError):
             raise aiohttp.ClientError
 
-    async def query(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_inline_button(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        choices = [
+            [InlineKeyboardButton("猫娘交流模式", callback_data = "gpt")],
+            [InlineKeyboardButton("Telegraph 队列", callback_data = "komga")],
+            [InlineKeyboardButton("帮助", callback_data = "help")],
+            [InlineKeyboardButton("关于", callback_data = "start")],
+        ]
+        reply_markup = InlineKeyboardMarkup(choices)
+        await update.message.reply_text("需要什么帮助瞄", reply_markup = reply_markup)
+
+    async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async def search(url) -> tuple[str, Optional[InlineKeyboardMarkup]]:
             search_instance = AggregationSearch(proxy = self._proxy)
             result = await search_instance.aggregation_search(url)
 
             if not result:
                 logger.info(f"No accurate results for {url}")
-                message = "Not found 😿"
-                return message, None
+                _message = "Not found 😿"
+                return _message, None
 
             search_url = result['url']
             search_thumb = result['thumbnail']
-            message = f"[🖼️]({search_url}) Gacha (>ワ<) [😼]({search_thumb})"
+            _message = f"[🖼️]({search_url}) Gacha (>ワ<) [😼]({search_thumb})"
 
             if result["class"] == "iqdb":
                 search_similarity = result['similarity']
@@ -48,8 +59,8 @@ class PandoraBox:
                 button = [
                     [InlineKeyboardButton(f"{search_source}: {search_similarity}% Match", url = search_url)]
                 ]
-                reply_markup = InlineKeyboardMarkup(button)
-                return message, reply_markup
+                _reply_markup = InlineKeyboardMarkup(button)
+                return _message, _reply_markup
 
             if result["class"] == "ascii2d":
                 search_author = result['author']
@@ -58,12 +69,26 @@ class PandoraBox:
                     [InlineKeyboardButton("Original", url = search_url)],
                     [InlineKeyboardButton(f"{search_author}", url = search_author_url)]
                 ]
-                reply_markup = InlineKeyboardMarkup(button)
-                return message, reply_markup
+                _reply_markup = InlineKeyboardMarkup(button)
+                return _message, _reply_markup
 
         # hey, start here c:
         if not filters.REPLY.filter(update.message):
-            await update.message.reply_text("Meow")  # have no logics yet
+            if re.search(r'hug|cuddle|pet', update.message.text):
+                old_fashioned_words = [
+                    "唔嗯（蹭蹭）", "没我同意前可别松手哦～",
+                    "呜呼～（抱紧）", "（*扑腾扑腾*）不可以突然这样，会害羞的啦～",
+                    "嗯哼（脸红）", "（*呼噜呼噜*）好温暖..."
+                ]
+                await update.message.reply_text(random.choice(old_fashioned_words))
+            elif re.search(r'kiss|snog', update.message.text):
+                very_shy = [
+                    "(⁄ ⁄•⁄ω⁄•⁄ ⁄)", "(*/ω＼*)",
+                    "(⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)", "(⁄ ⁄•⁄-⁄•⁄ ⁄)",
+                    "（*轻轻颤抖*）", "唔嗯，嗯，啊"
+                ]
+                await update.message.reply_text(random.choice(very_shy))
+
             return ConversationHandler.END
 
         user = update.message.from_user.username
@@ -77,11 +102,11 @@ class PandoraBox:
         if link_preview:
             if "danbooru" or "x" or "pixiv" or "twitter" in link_preview.url:
                 msg = "Why you use result to search 🤔?"
-                await update.message.reply_text(text = msg, do_quote = False)
+                await update.message.reply_text(text = msg)
             else:
-                link_url = await self.get_image_url(link_preview.url)
+                link_url = await self._get_image_url(link_preview.url)
                 msg, mark = await search(link_url)
-                await update.message.reply_markdown(text = msg, do_quote = False)
+                await update.message.reply_markdown(text = msg)
 
             return ConversationHandler.END
 
@@ -91,7 +116,7 @@ class PandoraBox:
             logger.info(f"{user} want to search image {photo_file.file_id}")
 
             msg, mark = await search(file_link)
-            await update.message.reply_markdown(text = msg, reply_markup = mark, do_quote = False)
+            await update.message.reply_markdown(text = msg, reply_markup = mark)
 
             return ConversationHandler.END
 
@@ -106,9 +131,9 @@ class PandoraBox:
 
             if attachment.is_video:
                 filename = attachment.file_unique_id + '.webm'
-                await update.message.reply_document(document = media, filename = filename, do_quote = False)
+                await update.message.reply_document(document = media, filename = filename)
             else:
-                await update.message.reply_photo(photo = media, do_quote = False)
+                await update.message.reply_photo(photo = media)
 
             return ConversationHandler.END
 
@@ -117,11 +142,11 @@ class PandoraBox:
             logger.info(f"{user} want to search image(document) {attachment.thumbnail.file_id}")
 
             msg, mark = await search(file_link)
-            await update.message.reply_markdown(text = msg, reply_markup = mark, do_quote = False)
+            await update.message.reply_markdown(text = msg, reply_markup = mark)
 
             return ConversationHandler.END
         else:
-            await update.message.reply_text("这是什么 OwO（欲哭无泪）", do_quote = False)
+            await update.message.reply_text("这是什么 OwO（欲哭无泪）")
 
         return ConversationHandler.END
 
@@ -135,28 +160,42 @@ class TelegraphHandler:
         self._user_id = user_id
         self._epub_task_queue = asyncio.Queue()
         self._komga_task_queue = asyncio.Queue()
+        self._idle_count = 0
 
-        komga_loop = asyncio.get_event_loop()
-        komga_loop.create_task(self._run_komga_task_periodically())
+        if user_id != -1:
+            komga_loop = asyncio.get_event_loop()
+            komga_loop.create_task(self._run_komga_task_periodically())
 
     async def _run_komga_task_periodically(self):
         async def process_queue(queue, num_tasks):
+            self._idle_count = 0
             tasks = [Telegraph(await queue.get()) for _ in range(num_tasks)]
             await asyncio.gather(*[task.get_zip() for task in tasks])
 
         while True:
-            queue_size = self._komga_task_queue.qsize()
-            logger.info(f"[Komga Sync Service]: current queue size: {queue_size}")
+            if self._idle_count == 20:
+                funny_states = [
+                    "watch a YouTube video", "enjoy a cup of coffee", "go outside for relax",
+                    "play with Neko Chan", "read the logger, interesting", "add some bugs"
+                ]
+                logger.info(f"[Komga Sync Service]: Idle state, {random.choice(funny_states)}")
+                await asyncio.sleep(300)
+            else:
+                if not self._komga_task_queue.empty():
+                    queue_size = self._komga_task_queue.qsize()
+                    logger.info(f"[Komga Sync Service]: Pending tasks: {queue_size}")
 
-            if queue_size == 1:
-                instance = Telegraph(await self._komga_task_queue.get())
-                await asyncio.create_task(instance.get_zip())
-            elif 2 <= queue_size <= 9:
-                await process_queue(self._komga_task_queue, 3)
-            elif queue_size >= 10:
-                await process_queue(self._komga_task_queue, 4)
+                    if queue_size == 1:
+                        self._idle_count = 0
+                        instance = Telegraph(await self._komga_task_queue.get())
+                        await asyncio.create_task(instance.get_zip())
+                    elif 2 <= queue_size <= 9:
+                        await process_queue(self._komga_task_queue, 3)
+                    elif queue_size >= 10:
+                        await process_queue(self._komga_task_queue, 4)
 
-            await asyncio.sleep(60)  # check every minute
+                self._idle_count += 1
+                await asyncio.sleep(3)
 
     async def _get_link(self, is_epub = False, content = None):
         telegra_ph_links = URLExtract().find_urls(content)
@@ -171,14 +210,15 @@ class TelegraphHandler:
     async def komga_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message.from_user.id != self._user_id:
             msg = f"だめですよ~ XwX, {update.message.from_user.username}"
-            await update.message.reply_text(text = msg, do_quote = False)
+            await update.message.reply_text(text = msg)
 
             return ConversationHandler.END
 
-        msg = f"{update.message.from_user.username}, 把 telegraph 链接端上来罢 ฅ(＾・ω・＾ฅ)"
-        await update.message.reply_text(text = msg, do_quote = False)
+        msg = f"@{update.message.from_user.username}, 把 telegraph 链接端上来罢 ฅ(＾・ω・＾ฅ)"
+        await update.message.reply_text(text = msg)
 
         return KOMGA
 
     async def get_link(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self._idle_count = 0
         await self._get_link(content = update.message.text_markdown)

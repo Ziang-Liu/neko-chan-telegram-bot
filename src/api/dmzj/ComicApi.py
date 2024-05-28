@@ -4,7 +4,7 @@ import json
 import aiohttp
 from fake_useragent import UserAgent
 
-from src.api.dmzj.crypto import Crypto
+from src.api.dmzj._Crypto import Crypto
 from src.utils.Logger import logger
 
 

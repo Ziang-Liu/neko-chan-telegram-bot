@@ -236,7 +236,7 @@ class Telegraph:
             manga.add_author(self.artist)
             manga.set_cover("cover.jpg", manga_cover)
 
-            if "翻訳" or "汉化" or "中國" or "翻译" or "中文" or "中国" in self.title_raw:
+            if re.search(r'翻訳|汉化|中國|翻译|中文|中国', self.title_raw):
                 manga.set_language('zh')
             else:
                 manga.set_language('ja')

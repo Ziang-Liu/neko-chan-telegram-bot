@@ -9,18 +9,18 @@ def proxy_init(proxy: URL | str) -> Proxy:
         proxy = URL(proxy)
 
     if proxy.scheme not in ("http", "https", "socks5"):
-        logger.error(f"Unknown scheme for proxy URL {proxy!r}")
+        logger.error(f"[Proxy Init]: Unknown scheme for proxy URL {proxy!r}")
         exit(1)
 
     if proxy.port is None:
-        logger.error("No port specified.")
+        logger.error("[Proxy Init]: No port specified.")
         exit(1)
 
     _test(str(proxy))
 
     if proxy.username or proxy.password == '':
         notice = f"{proxy.scheme}://username:password@{proxy.host}:{proxy.port}"
-        logger.info(f"If you have authorization secret, use {notice} like this.")
+        logger.info(f"[Proxy Init]: If you have authorization secret, use {notice} like this.")
 
         return Proxy(url = proxy)
 
@@ -35,11 +35,11 @@ def _test(proxy: str):
         response = client.get("https://httpbin.org/ip")
 
         if response.status_code != 200:
-            logger.error(f"Proxy failed to respond. Status code: {response.status_code}")
-            logger.error("Check your proxy URL or username/password")
+            logger.error(f"[Proxy Init]: Connection test return status {response.status_code}. "
+                         f"Check your proxy URL or username/password")
             exit(1)
     except Exception as exc:
-        logger.error(f"An error occurred: {exc}")
+        logger.error(f"[Proxy Init]: An error occurred: {exc}")
         exit(1)
     finally:
         client.close()
