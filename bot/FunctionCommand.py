@@ -6,13 +6,24 @@ from typing import Optional
 import aiohttp
 from fake_useragent import UserAgent
 from httpx import Proxy
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, filters
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
+from telegram.ext import (
+    ConversationHandler,
+    ContextTypes,
+    filters
+)
 from urlextract import URLExtract
 
-from src.service.Search import AggregationSearch
-from src.service.Telegraph import Telegraph
-from src.utils.Logger import logger
+# custom
+from src import (
+    AggregationSearch,  # class
+    logger,             # var
+    Telegraph           # class
+)
 
 
 class PandoraBox:
@@ -29,7 +40,7 @@ class PandoraBox:
         except (aiohttp.ClientError, asyncio.TimeoutError):
             raise aiohttp.ClientError
 
-    async def handle_inline_button(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_inline_button(self, update: Update, context: object):
         choices = [
             [InlineKeyboardButton("猫娘交流模式", callback_data = "gpt")],
             [InlineKeyboardButton("Telegraph 队列", callback_data = "komga")],
@@ -125,9 +136,7 @@ class PandoraBox:
             logger.info(f"{user} want sticker {attachment.file_unique_id}")
 
             sticker_instance = AggregationSearch(proxy = self._proxy)
-            await sticker_instance.get_media(sticker_url)
-
-            media = sticker_instance.image_byte
+            media = await sticker_instance.get_media(sticker_url)
 
             if attachment.is_video:
                 filename = attachment.file_unique_id + '.webm'
@@ -155,7 +164,7 @@ class PandoraBox:
 
 
 class TelegraphHandler:
-    def __init__(self, proxy: None | Proxy = None, user_id: int = -1):
+    def __init__(self, proxy: Optional[Proxy] = None, user_id: int = -1):
         self._proxy = proxy
         self._user_id = user_id
         self._epub_task_queue = asyncio.Queue()
@@ -207,7 +216,7 @@ class TelegraphHandler:
         if target_link and is_epub:
             return await self._epub_task_queue.put(target_link)
 
-    async def komga_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def komga_start(self, update: Update, context: object):
         if update.message.from_user.id != self._user_id:
             msg = f"だめですよ~ XwX, {update.message.from_user.username}"
             await update.message.reply_text(text = msg)
@@ -219,6 +228,6 @@ class TelegraphHandler:
 
         return KOMGA
 
-    async def get_link(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def get_link(self, update: Update, context: object):
         self._idle_count = 0
         await self._get_link(content = update.message.text_markdown)
