@@ -10,7 +10,7 @@ COPY requirements.txt requirements.txt
 COPY bot /neko/bot
 COPY src /neko/src
 
-RUN dnf install -y python3.11 python3-pip gcc libxml2-devel \
+RUN dnf install -y python3 python3-pip gcc libxml2-devel \
     && pip install --upgrade pip \
     && pip install -r requirements.txt \
     && chmod -R 777 /neko
