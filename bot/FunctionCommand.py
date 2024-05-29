@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 import re
 from typing import Optional
@@ -21,8 +22,8 @@ from urlextract import URLExtract
 # custom
 from src import (
     AggregationSearch,  # class
-    logger,             # var
-    Telegraph           # class
+    logger,  # var
+    Telegraph  # class
 )
 
 
@@ -51,6 +52,25 @@ class PandoraBox:
         await update.message.reply_text("需要什么帮助瞄", reply_markup = reply_markup)
 
     async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def send_epub(url):
+            instance = Telegraph(url = url)
+            await instance.get_epub()
+
+            if not os.path.exists(instance.epub_file_path):
+                await update.message.reply_text(text = "oops,下载好像出错了^QwQ^，过会再试试吧，对不起喵")
+                return ConversationHandler.END
+
+            if os.path.getsize(instance.epub_file_path) / (1024 * 1024) > 50:
+                await update.message.reply_text(text = "功能还没做，之后会发送 TempFile link（最大100MB限制）")
+                return ConversationHandler.END
+
+            await update.message.reply_document(
+                document = instance.epub_file_path,
+                connect_timeout = 30., write_timeout = 30., pool_timeout = 30., read_timeout = 30.
+            )
+
+            return ConversationHandler.END
+
         async def search(url) -> tuple[str, Optional[InlineKeyboardMarkup]]:
             search_instance = AggregationSearch(proxy = self._proxy)
             result = await search_instance.aggregation_search(url)
@@ -111,9 +131,12 @@ class PandoraBox:
         attachment = update.message.reply_to_message.effective_attachment
 
         if link_preview:
-            if "danbooru" or "x" or "pixiv" or "twitter" in link_preview.url:
-                msg = "唔...用答案搜索答案？🤔?"
+            if re.search(r'danbooru|x|twitter|pixiv|ascii|sauce', link_preview.url):
+                msg = "唔...用答案搜索答案？"
                 await update.message.reply_text(text = msg)
+            elif re.search(r'telegra.ph', link_preview.url):
+                logger.info(f"[Multi Query]: {user} want epub from {link_preview.url}]")
+                await send_epub(url = link_preview.url)
             else:
                 link_url = await self._get_image_url(link_preview.url)
                 msg, mark = await search(link_url)
@@ -167,7 +190,6 @@ class TelegraphHandler:
     def __init__(self, proxy: Optional[Proxy] = None, user_id: int = -1):
         self._proxy = proxy
         self._user_id = user_id
-        self._epub_task_queue = asyncio.Queue()
         self._komga_task_queue = asyncio.Queue()
         self._idle_count = 0
 
@@ -214,7 +236,7 @@ class TelegraphHandler:
             return await self._komga_task_queue.put(target_link)
 
         if target_link and is_epub:
-            return await self._epub_task_queue.put(target_link)
+            return target_link
 
     async def komga_start(self, update: Update, context: object):
         if update.message.from_user.id != self._user_id:
@@ -228,6 +250,6 @@ class TelegraphHandler:
 
         return KOMGA
 
-    async def get_link(self, update: Update, context: object):
+    async def put_link_for_komga(self, update: Update, context: object):
         self._idle_count = 0
         await self._get_link(content = update.message.text_markdown)

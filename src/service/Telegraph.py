@@ -22,6 +22,7 @@ class Telegraph:
         self.title_raw: str | None = None
         self.title: str | None = None
         self.artist: str | None = None
+        self.thumbnail: str | None = None
 
         env = EnvironmentReader()
 
@@ -33,12 +34,12 @@ class Telegraph:
         # working dir
         working_dirs = []
         self.base_path = env.get_variable("BASE_DIR")
-        self.komga_base_path = env.get_variable("KOMGA_PATH")
-        self.epub_base_path = env.get_variable("EPUB_PATH")
+        self.komga_folder_path = env.get_variable("KOMGA_PATH")
+        self.epub_folder_path = env.get_variable("EPUB_PATH")
         self._temp_path = env.get_variable("TEMP_PATH")
         self._working_path = os.getcwd()
-        working_dirs.append(self.komga_base_path)
-        working_dirs.append(self.epub_base_path)
+        working_dirs.append(self.komga_folder_path)
+        working_dirs.append(self.epub_folder_path)
         working_dirs.append(self._temp_path)
 
         # dir operation
@@ -58,6 +59,8 @@ class Telegraph:
 
         # generated path
         self.manga_path = self._temp_path
+        self.epub_file_path = self._temp_path
+        self._zip_file_path = self._temp_path
         self._download_path = self._temp_path
 
     async def _task_handler(self, first_time = True, is_zip = False, is_epub = False):
@@ -112,14 +115,14 @@ class Telegraph:
 
                 await asyncio.gather(*tasks)
 
-        zip_path = os.path.join(self.manga_path, self.title + '.zip')
-        epub_path = os.path.join(self.manga_path, self.title + '.epub')
+        self._zip_file_path = os.path.join(self.manga_path, self.title + '.zip')
+        self.epub_file_path = os.path.join(self.manga_path, self.title + '.epub')
 
-        if is_zip and os.path.exists(zip_path):
+        if is_zip and os.path.exists(self._zip_file_path):
             logger.info(f"Skip existed file '{self.title}.zip'")
             return "Exist"
 
-        if is_epub and os.path.exists(epub_path):
+        if is_epub and os.path.exists(self.epub_file_path):
             logger.info(f"Skip existed file '{self.title}.epub'")
             return "Exist"
 
@@ -145,6 +148,7 @@ class Telegraph:
 
             image_url_list = ['https://telegra.ph' + i for i in image_list]
             self.title_raw = re.sub(match, lambda x: sub[x.group()], title_raw)
+            self.thumbnail = image_url_list[0]
 
             logger.info(f"Start job for '{self.title_raw}'")
 
@@ -169,15 +173,15 @@ class Telegraph:
 
             # Filter target path
             if self.artist in ['Fanbox', 'FANBOX', 'FanBox', 'Pixiv', 'PIXIV']:
-                self.manga_path = os.path.join(self.komga_base_path, self.title)
+                self.manga_path = os.path.join(self.komga_folder_path, self.title)
             else:
-                self.manga_path = os.path.join(self.komga_base_path, self.artist)
+                self.manga_path = os.path.join(self.komga_folder_path, self.artist)
 
             if is_epub:
-                self.manga_path = os.path.join(self.epub_base_path, self.artist)
+                self.manga_path = os.path.join(self.epub_folder_path, self.artist)
 
             if is_zip:
-                self.manga_path = os.path.join(self.komga_base_path, self.artist)
+                self.manga_path = os.path.join(self.komga_folder_path, self.artist)
 
             self._download_path = os.path.join(self._temp_path, self.title)
 
