@@ -3,30 +3,33 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ConversationHandler,
+    ContextTypes,
     MessageHandler,
     filters,
-)
-from httpx import (
-    RemoteProtocolError
 )
 
 # custom
 from bot import (
     Basic,
-    KOMGA,              # var
-    PandoraBox,         # class
-    TelegraphHandler    # class
+    KOMGA,  # var
+    PandoraBox,  # class
+    TelegraphHandler  # class
 )
 from src import (
     EnvironmentReader,  # class
-    logger,             # var
-    proxy_init          # fun
+    logger,  # var
+    proxy_init  # fun
 )
 
+# from httpx import RemoteProtocolError
+
 if __name__ == "__main__":
-    async def error_handler(update: object, context: object):
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+        """
         if RemoteProtocolError:
             logger.error("这种情况一般是代理状态下切换节点导致TCP连接中断\n 建议：使用手动模式 | 替换官方Api")
+        """
+        logger.error(context.error)
 
 
     # ascii logo
@@ -90,7 +93,7 @@ if __name__ == "__main__":
         telegraph_message = ConversationHandler(
             entry_points = [CommandHandler(command = "komga", callback = telegraph.komga_start)],
             states = {
-                KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph.get_link)]
+                KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph.put_link_for_komga)]
             },
             fallbacks = [],
             conversation_timeout = 300
