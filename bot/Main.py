@@ -1,16 +1,35 @@
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ConversationHandler, filters, MessageHandler, CallbackQueryHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
+from httpx import (
+    RemoteProtocolError
+)
 
-import bot.BasicCommand as Basic
-from bot.FunctionCommand import PandoraBox, TelegraphHandler, KOMGA
-from src.Environment import EnvironmentReader
-from src.utils.Logger import logger
-from src.utils.Proxy import proxy_init
+# custom
+from bot import (
+    Basic,
+    KOMGA,              # var
+    PandoraBox,         # class
+    TelegraphHandler    # class
+)
+from src import (
+    EnvironmentReader,  # class
+    logger,             # var
+    proxy_init          # fun
+)
 
 if __name__ == "__main__":
-    def error_callback(error: Exception, application: Application) -> None:
-        application.create_task(application.process_error(update = None, error = error))
+    async def error_handler(update: object, context: object):
+        if RemoteProtocolError:
+            logger.error("这种情况一般是代理状态下切换节点导致TCP连接中断\n 建议：使用手动模式 | 替换官方Api")
 
+
+    # ascii logo
     logger.info("""
       _   _          _                 ____   _                      
      | \ | |   ___  | | __   ___      / ___| | |__     __ _   _ __   
@@ -18,23 +37,31 @@ if __name__ == "__main__":
      | |\  | |  __/ |   <  | (_) |   | |___  | | | | | (_| | | | | | 
      |_| \_|  \___| |_|\_\  \___/     \____| |_| |_|  \__,_| |_| |_| 
     """)
-    # import envs
-    env = EnvironmentReader()
-    bot_token = env.get_variable("BOT_TOKEN")
-    myself_id = env.get_variable("MY_USER_ID")
-    proxy_env = env.get_variable("PROXY")
 
-    if not bot_token:
+    # environment var
+    _env = EnvironmentReader()
+    _base_url = _env.get_variable("BASE_URL")
+    _base_file_url = _env.get_variable("BASE_FILE_URL")
+    _bot_token = _env.get_variable("BOT_TOKEN")
+    _myself_id = _env.get_variable("MY_USER_ID")
+    _proxy = _env.get_variable("PROXY")
+
+    if not _bot_token:
         logger.error("[Main]: Bot token not set, please fill right params and try again.")
         exit(1)
 
     # Hello there? Neko Chan is built!!!
-    if proxy_env:
-        proxy = proxy_init(proxy_env)
-        neko_chan = Application.builder().token(bot_token).proxy(proxy).get_updates_proxy(proxy).build()
+    if _proxy:
+        proxy = proxy_init(_proxy)
+        neko_chan = (ApplicationBuilder().token(_bot_token).
+                     proxy(proxy).get_updates_proxy(proxy).
+                     pool_timeout(30.).connect_timeout(30.).
+                     base_url(_base_url).base_file_url(_base_file_url).build())
     else:
         proxy = None
-        neko_chan = Application.builder().token(bot_token).build()
+        neko_chan = (ApplicationBuilder().token(_bot_token).
+                     pool_timeout(30.).connect_timeout(30.).
+                     base_url(_base_url).base_file_url(_base_file_url).build())
 
     if not proxy:
         logger.info("[Main]: Proxy not set, make sure you can directly connect to telegram server.")
@@ -46,7 +73,8 @@ if __name__ == "__main__":
     neko_chan.add_handler(command_help)
 
     # Featured Handlers
-    pandora = PandoraBox(proxy)
+    pandora = PandoraBox(proxy)  # standalone async process
+
     neko_chan.add_handler(
         CommandHandler(
             command = ["hug", "cuddle", "kiss", "snog", "pet"], callback = pandora.auto_parse_reply,
@@ -54,22 +82,27 @@ if __name__ == "__main__":
         )
     )
 
-    if not myself_id:
+    if not _myself_id:
         logger.info("[Main]: Master's user id not set, telegraph syncing service will not work.")
     else:
-        telegraph_tasks = TelegraphHandler(proxy = proxy, user_id = myself_id)
+        telegraph = TelegraphHandler(proxy = proxy, user_id = _myself_id)
+
         telegraph_message = ConversationHandler(
-            entry_points = [CommandHandler(command = "komga", callback = telegraph_tasks.komga_start)],
+            entry_points = [CommandHandler(command = "komga", callback = telegraph.komga_start)],
             states = {
-                KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph_tasks.get_link)]
+                KOMGA: [MessageHandler(filters = filters.TEXT, callback = telegraph.get_link)]
             },
             fallbacks = [],
             conversation_timeout = 300
         )
+
         neko_chan.add_handler(telegraph_message)
 
+    # error handler
+    neko_chan.add_error_handler(error_handler)
+
     try:
-        env.print_env()
+        _env.print_env()
         logger.info("[Main]: Neko Chan, link start!!!")
         neko_chan.run_polling(allowed_updates = Update.ALL_TYPES)
     except Exception as e:
