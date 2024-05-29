@@ -1,17 +1,20 @@
 FROM fedora AS builder
 
-WORKDIR /app
+WORKDIR /neko/bot
+WORKDIR /neko/src
+
+ENV PATH=$PATH:/neko
+ENV PYTHONPATH /neko
 
 COPY requirements.txt requirements.txt
+COPY bot /neko/bot
+COPY src /neko/src
 
-RUN dnf install -y python3 python3-pip gcc libxml2-devel libxslt-devel \
+RUN dnf install -y python3.11 python3-pip gcc libxml2-devel \
     && pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && pip install -r requirements.txt \
+    && chmod -R 777 /neko
 
-COPY bot /app
+VOLUME ["/media", "/log"]
 
-RUN chmod -R 777 /app
-
-VOLUME /download
-
-CMD ["python3", "/app/bot.py"]
+CMD ["python3", "/neko/bot/Main.py"]
