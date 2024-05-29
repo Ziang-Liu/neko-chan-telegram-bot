@@ -13,7 +13,8 @@ COPY src /neko/src
 RUN dnf install -y python3 python3-pip gcc libxml2-devel \
     && pip install --upgrade pip \
     && pip install -r requirements.txt \
-    && chmod -R 777 /neko
+    && chmod -R 777 /neko \
+    && dnf autoremove -y
 
 VOLUME ["/media", "/log"]
 
