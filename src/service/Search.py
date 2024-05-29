@@ -1,13 +1,11 @@
 import asyncio
-from typing import (
-    Dict,
-    Optional, Any, )
+from typing import Any, Dict, Optional, List, ByteString, Tuple
 from urllib import parse as urlparse
 
 import aiohttp
 from PicImageSearch import Ascii2D, Iqdb
 from PicImageSearch import Network
-from PicImageSearch.model import Ascii2DResponse, IqdbResponse
+from PicImageSearch.model import Ascii2DResponse, IqdbResponse, IqdbItem
 from fake_useragent import UserAgent
 from httpx import Proxy
 from httpx import URL, AsyncClient
@@ -27,16 +25,17 @@ def parse_cookies(cookies_str: Optional[str] = None) -> Dict[str, str]:
 class AggregationSearch:
     def __init__(self, proxy: None | Proxy = None):
         self._proxy = proxy
-        self.image_byte: bytes | int = b''
-        self.ascii2d_result = {}
-        self.ascii2d_result_bovw = {}
-        self.iqdb_result = {}
+        self._media_byte: ByteString = b''
 
-    async def get_media(self, url: str, cookies: Optional[str] = None) -> int:
-        _url = URL(url)
-        referer = f"{_url.scheme}://{_url.host}/"
-        default_headers = {"User-Agent": UserAgent().random}
-        headers = {"Referer": referer, **default_headers}
+        self.ascii2d_result: Dict = {}
+        self.ascii2d_result_bovw: Dict = {}
+        self.iqdb_result: Dict = {}
+
+    async def get_media(self, url: str, cookies: Optional[str] = None):
+        _url: URL = URL(url)
+        _referer: str = f"{_url.scheme}://{_url.host}/"
+        _default_headers: Dict = {"User-Agent": UserAgent().random}
+        headers: Dict = {"Referer": _referer, **_default_headers}
 
         async with AsyncClient(
                 headers = headers, cookies = parse_cookies(cookies),
@@ -45,52 +44,56 @@ class AggregationSearch:
             resp = await client.get(_url)
 
             if resp.status_code != 200:
-                return resp.status_code
+                return None
 
-            self.image_byte = resp.content
+            self._media_byte = resp.content
 
-        return 200
+            return b'Fetched'
 
-    async def _search_with_type(self, url: str, search_func, client_class, _retry = False):
+    async def _search_with_type(
+            self,
+            url: str,
+            function,
+            client_class,
+            _retry = False) -> Tuple[Any] | Dict | None:
+
         async with Network(proxies = self._proxy) as client:
             search_instance = client_class(client = client)
 
-            if not self.image_byte:
-                status = await self.get_media(url = url)
-
-                if status != 200:
+            if not self._media_byte:
+                if not await self.get_media(url = url):
                     if not _retry:
-                        await self._search_with_type(url, search_func, client_class, _retry = True)
-                    else:
-                        raise aiohttp.ClientError(f"Return status code {status}")
+                        await self._search_with_type(url, function, client_class, _retry = True)
 
-            results = await search_func(search_instance, file = self.image_byte)
+                    raise aiohttp.ClientError
+
+            results = await function(search_instance, file = self._media_byte)
 
             if not results.raw:
-                return
+                return None
 
             if client_class == Ascii2D:
                 resp_text, resp_url, _ = await search_instance.get(results.url.replace("/color/", "/bovw/"))
                 bovw_results = Ascii2DResponse(resp_text, resp_url)
                 tasks = [self._format_ascii2d_result(bovw_results, True),
                          self._format_ascii2d_result(results)]
-                return await asyncio.gather(*tasks)
+                return await asyncio.gather(*tasks)  # always return tuple
 
             if client_class == Iqdb:
-                return await self._format_iqdb_result(results)
+                return await self._format_iqdb_result(results)  # none or dict
 
     async def _format_iqdb_result(self, resp: IqdbResponse):
-        selected_res = resp.raw[0]
-        danbooru_res_list = [i for i in resp.raw if i.source == "Danbooru"]
-        yandere_res_list = [i for i in resp.raw if i.source == "yande.re"]
+        selected_res: IqdbItem = resp.raw[0]
+        danbooru_res: List[IqdbItem] = [i for i in resp.raw if i.source == "Danbooru"]
+        yandere_res: List[IqdbItem] = [i for i in resp.raw if i.source == "yande.re"]
 
-        if danbooru_res_list:
-            selected_res = danbooru_res_list[0]
-        elif yandere_res_list:
-            selected_res = yandere_res_list[0]
+        if danbooru_res:
+            selected_res = danbooru_res[0]
+        elif yandere_res:
+            selected_res = yandere_res[0]
 
         if selected_res.similarity < 85.0:
-            return
+            return None
 
         self.iqdb_result["class"] = "iqdb"
         self.iqdb_result["url"] = selected_res.url
@@ -99,46 +102,51 @@ class AggregationSearch:
         self.iqdb_result["content"] = selected_res.content
         self.iqdb_result["source"] = selected_res.source
 
+        return self.iqdb_result
+
     async def _format_ascii2d_result(self, resp: Ascii2DResponse, bovw: bool = False):
-        target_dict = self.ascii2d_result_bovw if bovw else self.ascii2d_result
+
+        target: Dict = self.ascii2d_result_bovw if bovw else self.ascii2d_result
 
         for i, r in enumerate(resp.raw):
             if not (r.title or r.url_list):
                 continue
 
             r.author = "None" if r.author == '' else r.author
-            target_dict[i - 1] = {}
-            target_dict[i - 1]["class"] = "ascii2d"
-            target_dict[i - 1]["url"] = r.url
-            target_dict[i - 1]["author"] = r.author
-            target_dict[i - 1]["author_url"] = r.author_url
-            target_dict[i - 1]["thumbnail"] = r.thumbnail
+            target[i - 1] = {}
+            target[i - 1]["class"] = "ascii2d"
+            target[i - 1]["url"] = r.url
+            target[i - 1]["author"] = r.author
+            target[i - 1]["author_url"] = r.author_url
+            target[i - 1]["thumbnail"] = r.thumbnail
 
             if i == 3:
                 break
 
-    async def iqdb_search(self, url: str, _retry = False):
-        await self._search_with_type(url, Iqdb.search, Iqdb, _retry)
+    async def iqdb_search(self, url: str, _retry = False) -> Dict | None:
+        if not await self._search_with_type(url, Iqdb.search, Iqdb, _retry):
+            return None
+
         return self.iqdb_result
 
-    async def ascii2d_search(self, url, _retry = False):
-        await self._search_with_type(url, Ascii2D.search, Ascii2D, _retry)
-
-        if not self.ascii2d_result:
-            return
+    async def ascii2d_search(self, url, _retry = False) -> Dict | None:
+        if not await self._search_with_type(url, Ascii2D.search, Ascii2D, _retry):
+            return None
 
         for i in range(len(self.ascii2d_result)):
-            if self.ascii2d_result[i]["url"] != "":
-                if self.ascii2d_result[i]["url"] == self.ascii2d_result_bovw[i]["url"]:
-                    return self.ascii2d_result[i]
+            if not self.ascii2d_result[i]["url"]:
+                return None
 
-    async def aggregation_search(self, url: str) -> Optional[dict[Any]]:
+            if self.ascii2d_result[i]["url"] == self.ascii2d_result_bovw[i]["url"]:
+                return self.ascii2d_result[i]
+
+    async def aggregation_search(self, url: str) -> Dict | None:
         result = await self.iqdb_search(url)
 
         if not result:
-            result = await self.ascii2d_search(url)
-
-        return result
+            return await self.ascii2d_search(url)
+        else:
+            return result
 
 
 class TraceMoe:
