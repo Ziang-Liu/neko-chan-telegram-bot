@@ -48,7 +48,7 @@ class AggregationSearch:
 
             self._media_byte = resp.content
 
-            return b'Fetched'
+            return resp.content
 
     async def _search_with_type(
             self,
