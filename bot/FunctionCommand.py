@@ -104,7 +104,7 @@ class PandoraBox:
 
         user = update.message.from_user.username
         user_replied_to = update.message.reply_to_message.from_user.username
-        logger.info(f"{user} replied to {user_replied_to}: "
+        logger.info(f"[Multi Query]: {user} replied to {user_replied_to}: "
                     f"{update.message.text} with update_id {update.update_id}")
 
         link_preview = update.message.reply_to_message.link_preview_options
@@ -112,7 +112,7 @@ class PandoraBox:
 
         if link_preview:
             if "danbooru" or "x" or "pixiv" or "twitter" in link_preview.url:
-                msg = "Why you use result to search 🤔?"
+                msg = "唔...用答案搜索答案？🤔?"
                 await update.message.reply_text(text = msg)
             else:
                 link_url = await self._get_image_url(link_preview.url)
@@ -124,7 +124,7 @@ class PandoraBox:
         if filters.PHOTO.filter(update.message.reply_to_message):
             photo_file = update.message.reply_to_message.photo[2]
             file_link = (await context.bot.get_file(photo_file.file_id)).file_path
-            logger.info(f"{user} want to search image {photo_file.file_id}")
+            logger.info(f"[Multi Query]: {user} want to search image {photo_file.file_id}")
 
             msg, mark = await search(file_link)
             await update.message.reply_markdown(text = msg, reply_markup = mark)
@@ -133,7 +133,7 @@ class PandoraBox:
 
         if filters.Sticker.ALL.filter(update.message.reply_to_message):
             sticker_url = (await context.bot.get_file(attachment.file_id)).file_path
-            logger.info(f"{user} want sticker {attachment.file_unique_id}")
+            logger.info(f"[Multi Query]: {user} want sticker {attachment.file_unique_id}")
 
             sticker_instance = AggregationSearch(proxy = self._proxy)
             media = await sticker_instance.get_media(sticker_url)
@@ -148,7 +148,7 @@ class PandoraBox:
 
         if filters.Document.IMAGE.filter(update.message.reply_to_message):
             file_link = (await context.bot.get_file(attachment.thumbnail.file_id)).file_path
-            logger.info(f"{user} want to search image(document) {attachment.thumbnail.file_id}")
+            logger.info(f"[Multi Query]: {user} want to search image(document) {attachment.thumbnail.file_id}")
 
             msg, mark = await search(file_link)
             await update.message.reply_markdown(text = msg, reply_markup = mark)
