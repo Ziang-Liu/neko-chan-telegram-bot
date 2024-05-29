@@ -8,6 +8,8 @@ class EnvironmentReader:
         # bot params
         self.BOT_TOKEN: str | None = os.getenv('BOT_TOKEN', None)  # required
         self.MY_USER_ID: int | None = os.getenv('MY_USER_ID', None)  # in common sense, it is required
+        self.BASE_URL: str = os.getenv('BASE_URL', 'https://api.telegram.org/bot')
+        self.BASE_FILE_URL: str = os.getenv('BASE_FILE_URL', 'https://api.telegram.org/file/bot')
 
         # basic working dirs, no need to change
         self.BASE_DIR = os.getenv('BASE_DIR', '/media')
@@ -23,10 +25,11 @@ class EnvironmentReader:
 
     def print_env(self):
         logger.info("---------------Environment variables---------------")
-        logger.info(f"Bot token: {self.BOT_TOKEN}")
         logger.info(f"Master's user id: {self.MY_USER_ID}")
         logger.info(f"Proxy: {self.PROXY}")
         logger.info(f"Telegraph threads: {self.TELEGRAPH_THREADS}")
+        logger.info(f"Base URL: {self.BASE_URL}")
+        logger.info(f"Base File URL: {self.BASE_FILE_URL}")
         logger.info("---------------------------------------------------")
 
     def print_attribute(self, attribute_name):
