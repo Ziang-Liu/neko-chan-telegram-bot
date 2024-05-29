@@ -85,7 +85,7 @@ if __name__ == "__main__":
     if not _myself_id:
         logger.info("[Main]: Master's user id not set, telegraph syncing service will not work.")
     else:
-        telegraph = TelegraphHandler(proxy = proxy, user_id = _myself_id)
+        telegraph = TelegraphHandler(proxy = proxy, user_id = int(_myself_id))
 
         telegraph_message = ConversationHandler(
             entry_points = [CommandHandler(command = "komga", callback = telegraph.komga_start)],
