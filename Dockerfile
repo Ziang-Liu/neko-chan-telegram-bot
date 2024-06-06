@@ -10,7 +10,7 @@ COPY requirements.txt requirements.txt
 COPY bot /neko/bot
 COPY src /neko/src
 
-RUN apk add --no-cache --virtual .build-deps gcc musl-dev \
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev \
     && pip install --no-cache-dir -r requirements.txt \
     && apk del --purge .build-deps
 
