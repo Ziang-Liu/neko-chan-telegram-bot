@@ -4,19 +4,25 @@ import re
 import shutil
 import zipfile
 from datetime import datetime, timedelta
+from typing import Optional
 
 import aiofiles
-import aiohttp
+import httpx
 from bs4 import BeautifulSoup
 from ebooklib import epub
 from fake_useragent import UserAgent
+from httpx import URL, AsyncClient, Proxy, RequestError, Response
 
 from src.Environment import EnvironmentReader
 from src.utils.Logger import logger
 
 
 class Telegraph:
-    def __init__(self, url: str) -> None:
+    def __init__(
+            self,
+            url: str | URL,
+            proxy: Optional[URL] | Optional[Proxy] | Optional[str] = None,
+    ) -> None:
         # manga params
         self.url = url
         self.title_raw: str | None = None
@@ -27,7 +33,7 @@ class Telegraph:
         env = EnvironmentReader()
 
         # network params
-        self._proxy = env.get_variable("PROXY")
+        self._proxy = proxy
         self._thread = env.get_variable("TELEGRAPH_THREADS")
         self._headers = {'User-Agent': UserAgent().random}
 
@@ -64,28 +70,28 @@ class Telegraph:
         self._download_path = self._temp_path
 
     async def _task_handler(self, first_time = True, is_zip = False, is_epub = False):
-        async def image_handler(session: aiohttp.ClientSession, url, image_path, retries = 5, delay = 3):
-            async def write_image(response: aiohttp.ClientResponse, path) -> None:
+        async def image_handler(client: AsyncClient, url, image_path, retries = 5, delay = 3):
+            async def write_image(response: Response, path) -> None:
                 if os.path.exists(path) and os.path.getsize(path) != 0:
                     return
 
                 async with aiofiles.open(path, 'wb') as f:
-                    await f.write(await response.read())
+                    await f.write(await response.aread())
 
             for attempt in range(retries):
                 try:
-                    async with session.get(url, headers = self._headers, proxy = self._proxy) as resp:
-                        if resp.status == 200:
-                            await write_image(resp, image_path)
-                            return
-                        else:
-                            logger.warning(f"HTTP Status {resp.status} for {image_path}")
-                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    resp = await client.get(url, headers = self._headers)
+                    if resp.status_code == 200:
+                        await write_image(resp, image_path)
+                        return
+                    else:
+                        logger.warning(f"HTTP Status {resp.status_code} for {image_path}")
+                except (RequestError, asyncio.TimeoutError):
                     if attempt < retries - 1:
                         await asyncio.sleep(delay)
 
         async def create_queue():
-            async def worker(queue: asyncio.Queue, session: aiohttp.ClientSession):
+            async def worker(queue: asyncio.Queue, client: AsyncClient):
                 while True:
                     img_num, url = await queue.get()
 
@@ -93,19 +99,18 @@ class Telegraph:
                         break
 
                     image_path = os.path.join(self._download_path, f'{img_num}.jpg')  # this is useful
-                    await image_handler(session, url, image_path)  # use function
+                    await image_handler(client, url, image_path)  # use function
                     queue.task_done()
 
             q = asyncio.Queue()
             for rank, link in enumerate(self._image_url_list):
                 q.put_nowait((rank, link))
 
-            timeout = aiohttp.ClientTimeout(total = 10)
-            async with aiohttp.ClientSession(timeout = timeout) as client:
+            async with httpx.AsyncClient(timeout = 10, proxy = self._proxy) as c:
                 tasks = []
 
                 for _ in range(self._thread):
-                    task = asyncio.create_task(worker(q, client))
+                    task = asyncio.create_task(worker(q, c))
                     tasks.append(task)
 
                 await q.join()
@@ -139,12 +144,12 @@ class Telegraph:
         return
 
     async def _get_info_handler(self, retries = 3, delay = 5, is_zip = False, is_epub = False) -> str:
-        async def regex(response: aiohttp.ClientResponse) -> list:
+        async def regex(response: Response) -> list:
             # Regex: Full Title
             match = r'\*|\||\?|– Telegraph| |/|:'
             sub = {'*': '٭', '|': '丨', '?': '？', '– Telegraph': '', ' ': '', '/': 'ǀ', ':': '∶'}
-            title_raw = BeautifulSoup(await response.text(), 'html.parser').find("title").text
-            image_list = re.findall(r'img src="(.*?)"', await response.text())
+            title_raw = BeautifulSoup(response.text, 'html.parser').find("title").text
+            image_list = re.findall(r'img src="(.*?)"', response.text)
 
             image_url_list = ['https://telegra.ph' + i for i in image_list]
             self.title_raw = re.sub(match, lambda x: sub[x.group()], title_raw)
@@ -189,19 +194,17 @@ class Telegraph:
 
         for attempt in range(retries):
             try:
-                timeout = aiohttp.ClientTimeout(total = 10)
-                async with aiohttp.ClientSession(timeout = timeout) as session:
-                    async with session.get(
-                            url = self.url,
-                            headers = self._headers,
-                            proxy = self._proxy
-                    ) as resp:
-                        if resp.status == 200:
-                            self._image_url_list = await regex(resp)
-                            return "OK"
-                        else:
-                            logger.error(f"HTTP Status {resp.status}, maybe article is missing?")
-            except (aiohttp.ClientError, asyncio.TimeoutError):
+                async with AsyncClient(timeout = 10, proxy = self._proxy) as client:
+                    resp = await client.get(
+                        url = self.url,
+                        headers = self._headers,
+                    )
+                    if resp.status_code == 200:
+                        self._image_url_list = await regex(resp)
+                        return "OK"
+                    else:
+                        logger.error(f"HTTP Status {resp.status_code}, maybe article is missing?")
+            except (RequestError, asyncio.TimeoutError):
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
                 else:

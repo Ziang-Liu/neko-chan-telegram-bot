@@ -1,14 +1,13 @@
 import asyncio
 from typing import Any, Dict, Optional, List, ByteString, Tuple
-from urllib import parse as urlparse
+from urllib.parse import quote_plus
 
-import aiohttp
 from PicImageSearch import Ascii2D, Iqdb
 from PicImageSearch import Network
 from PicImageSearch.model import Ascii2DResponse, IqdbResponse, IqdbItem
 from fake_useragent import UserAgent
 from httpx import Proxy
-from httpx import URL, AsyncClient
+from httpx import URL, AsyncClient, NetworkError
 
 
 def parse_cookies(cookies_str: Optional[str] = None) -> Dict[str, str]:
@@ -65,7 +64,7 @@ class AggregationSearch:
                     if not _retry:
                         await self._search_with_type(url, function, client_class, _retry = True)
 
-                    raise aiohttp.ClientError
+                    raise NetworkError
 
             results = await function(search_instance, file = self._media_byte)
 
@@ -165,20 +164,20 @@ class TraceMoe:
         if self.resp.get("error"):
             raise Exception(self.resp["error"])
 
-    async def _check_connection(self, session, proxy = None):
-        async with session.get(self._base, proxy = proxy) as resp:
-            if resp.status != 200:
-                raise ConnectionError(resp.status)
+    async def _check_connection(self, client: AsyncClient):
+        resp = await client.get(self._base)
+        if resp.status_code != 200:
+            raise ConnectionError(resp.status_code)
 
     async def _search(self, url, api_url, proxy = None):
-        async with aiohttp.ClientSession() as session:
-            await self._check_connection(session, proxy)
+        async with AsyncClient(proxy = proxy) as client:
+            await self._check_connection(client)
 
-            async with session.get(api_url.format(urlparse.quote_plus(url)), proxy = proxy) as resp:
-                self.resp = await resp.json()
-                await self._error_handler()
+            resp = await client.get(api_url.format(quote_plus(url)))
+            self.resp = resp.json()
+            await self._error_handler()
 
-                return self.resp['result']
+            return self.resp['result']
 
     async def default(self, url, proxy = None):
         return await self._search(url, self._default_api, proxy)
