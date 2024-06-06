@@ -10,7 +10,10 @@ COPY requirements.txt requirements.txt
 COPY bot /neko/bot
 COPY src /neko/src
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del --purge .build-deps \
+    && apk autoremove
 
 VOLUME ["/media", "/log"]
 
