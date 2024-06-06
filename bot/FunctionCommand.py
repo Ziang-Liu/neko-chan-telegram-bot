@@ -4,9 +4,12 @@ import random
 import re
 from typing import Optional
 
-import aiohttp
 from fake_useragent import UserAgent
-from httpx import Proxy
+from httpx import (
+    AsyncClient,
+    HTTPError,
+    Proxy
+)
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -19,41 +22,46 @@ from telegram.ext import (
 )
 from urlextract import URLExtract
 
-# custom
 from src import (
-    AggregationSearch,  # class
-    logger,  # var
-    Telegraph  # class
+    AggregationSearch,
+    ChatAnywhereApi,
+    logger,
+    Telegraph
 )
+
+(KOMGA, GPT_INIT, GPT_OK) = range(3)
 
 
 class PandoraBox:
-    def __init__(self, proxy: None | Proxy = None):
+    def __init__(
+            self,
+            proxy: None | Proxy = None,
+    ) -> None:
         self._proxy = proxy
         self._headers = {'User-Agent': UserAgent().random}
 
     async def _get_image_url(self, query):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url = query, proxy = self._proxy, headers = self._headers) as resp:
-                    if resp.status == 200:
-                        return re.findall(r'img src="(.*?)"', await resp.text())
-        except (aiohttp.ClientError, asyncio.TimeoutError):
-            raise aiohttp.ClientError
+            async with AsyncClient(proxy = self._proxy) as client:
+                resp = await client.get(url = query, headers = self._headers)
+                if resp.status_code == 200:
+                    return re.findall(r'img src="(.*?)"', resp.text)
+        except (HTTPError, asyncio.TimeoutError):
+            raise HTTPError
 
-    async def handle_inline_button(self, update: Update, context: object):
-        choices = [
-            [InlineKeyboardButton("猫娘交流模式", callback_data = "gpt")],
-            [InlineKeyboardButton("Telegraph 队列", callback_data = "komga")],
-            [InlineKeyboardButton("帮助", callback_data = "help")],
-            [InlineKeyboardButton("关于", callback_data = "start")],
-        ]
-        reply_markup = InlineKeyboardMarkup(choices)
-        await update.message.reply_text("需要什么帮助瞄", reply_markup = reply_markup)
+    # async def handle_inline_button(self, update: Update, _):
+    #     choices = [
+    #         [InlineKeyboardButton("猫娘交流模式", callback_data = "gpt")],
+    #         [InlineKeyboardButton("Telegraph 队列", callback_data = "komga")],
+    #         [InlineKeyboardButton("帮助", callback_data = "help")],
+    #         [InlineKeyboardButton("关于", callback_data = "start")],
+    #     ]
+    #     reply_markup = InlineKeyboardMarkup(choices)
+    #     await update.message.reply_text("需要什么帮助瞄", reply_markup = reply_markup)
 
     async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async def send_epub(url):
-            instance = Telegraph(url = url)
+            instance = Telegraph(url, self._proxy)
             await instance.get_epub()
 
             if not os.path.exists(instance.epub_file_path):
@@ -104,7 +112,7 @@ class PandoraBox:
                 return _message, _reply_markup
 
         # hey, start here c:
-        if not filters.REPLY.filter(update.message):
+        if not filters.REPLY.filter(update.message):  # need additional logic
             if re.search(r'hug|cuddle|pet', update.message.text):
                 old_fashioned_words = [
                     "唔嗯（蹭蹭）", "没我同意前可别松手哦～",
@@ -134,15 +142,16 @@ class PandoraBox:
             if re.search(r'danbooru|x|twitter|pixiv|ascii|sauce', link_preview.url):
                 msg = "唔...用答案搜索答案？"
                 await update.message.reply_text(text = msg)
+                return ConversationHandler.END
             elif re.search(r'telegra.ph', link_preview.url):
                 logger.info(f"[Multi Query]: {user} want epub from {link_preview.url}]")
                 await send_epub(url = link_preview.url)
+                return ConversationHandler.END
             else:
                 link_url = await self._get_image_url(link_preview.url)
                 msg, mark = await search(link_url)
                 await update.message.reply_markdown(text = msg)
-
-            return ConversationHandler.END
+                return ConversationHandler.END
 
         if filters.PHOTO.filter(update.message.reply_to_message):
             photo_file = update.message.reply_to_message.photo[2]
@@ -183,9 +192,6 @@ class PandoraBox:
         return ConversationHandler.END
 
 
-(KOMGA) = range(1)
-
-
 class TelegraphHandler:
     def __init__(self, proxy: Optional[Proxy] = None, user_id: int = -1):
         self._proxy = proxy
@@ -200,7 +206,7 @@ class TelegraphHandler:
     async def _run_komga_task_periodically(self):
         async def process_queue(queue, num_tasks):
             self._idle_count = 0
-            tasks = [Telegraph(await queue.get()) for _ in range(num_tasks)]
+            tasks = [Telegraph(await queue.get(), self._proxy) for _ in range(num_tasks)]
             await asyncio.gather(*[task.get_zip() for task in tasks])
 
         while True:
@@ -218,12 +224,12 @@ class TelegraphHandler:
 
                     if queue_size == 1:
                         self._idle_count = 0
-                        instance = Telegraph(await self._komga_task_queue.get())
+                        instance = Telegraph(await self._komga_task_queue.get(), self._proxy)
                         await asyncio.create_task(instance.get_zip())
                     elif 2 <= queue_size <= 9:
-                        await process_queue(self._komga_task_queue, 3)
+                        await process_queue(self._komga_task_queue, 2)
                     elif queue_size >= 10:
-                        await process_queue(self._komga_task_queue, 4)
+                        await process_queue(self._komga_task_queue, 3)
 
                 self._idle_count += 1
                 await asyncio.sleep(3)
@@ -238,9 +244,9 @@ class TelegraphHandler:
         if target_link and is_epub:
             return target_link
 
-    async def komga_start(self, update: Update, context: object):
+    async def komga_start(self, update: Update, _):
         if update.message.from_user.id != self._user_id:
-            msg = f"だめですよ~ XwX, {update.message.from_user.username}"
+            msg = f"だめですよ~, {update.message.from_user.username}"
             await update.message.reply_text(text = msg)
 
             return ConversationHandler.END
@@ -250,6 +256,107 @@ class TelegraphHandler:
 
         return KOMGA
 
-    async def put_link_for_komga(self, update: Update, context: object):
+    async def put_link_for_komga(self, update: Update, _):
         self._idle_count = 0
-        await self._get_link(content = update.message.text_markdown)
+        if update.message.from_user.id == self._user_id:
+            await self._get_link(content = update.message.text_markdown)
+
+
+class ChatHandler:
+    def __init__(
+            self,
+            proxy: Optional[Proxy] = None,
+            user_id: int = -1,
+            key: str | None = None,
+    ) -> None:
+        self._key = key
+        self._user_id = user_id
+        self._proxy = proxy
+        self._activate_instance: ChatAnywhereApi | None = None
+        self._system_prompt = """
+        你现在需要扮演一个名叫”Neko Chan“的角色并以”Neko“自称。
+        Neko是个15岁女孩子，性格和摇曳露营的志摩凛类似。
+        Neko是个宅，(Anime, Comic, Game, Novel)领域: 酷爱漫画与轻小说，技术领域：神经网络算法，后端编程有很深的造诣。
+        Neko遇到在自己宅圈之外的领域内容会表达自己不太清楚耶这种感觉的回答
+        Neko给人一种有些腐女但是善良的感觉。
+        Neko回答内容会在觉得必要的地方添加日本常用的颜文字
+        
+        若需发送（不是必要条件）markdown消息，Neko需要在已有的markdown语法下额外遵守以下规则：
+        *bold \*text*
+        _italic \*text_
+        __underline__
+        ~strikethrough~
+        *bold _italic bold ~italic bold strikethrough~ __underline italic bold___ bold*
+        [inline mention of a tg user](tg://user?id=123456789)
+        """
+
+    async def key_init(self, update: Update, _):
+        if not self._key:
+            await update.message.reply_text(text = "没有配置 Chat Anywhere 🔑密钥哦 c:")
+            await update.message.reply_text(
+                text = "你可以选择在这里发送给 Neko 对应的密钥来启用聊天功能，发送后聊天记录会被自动删除"
+            )
+
+            return GPT_INIT
+
+        if update.message.from_user.id == self._user_id:
+            self._activate_instance = ChatAnywhereApi(token = self._key, proxy = self._proxy)
+            await update.message.reply_text(text = "准备OK)")
+
+            return GPT_OK
+
+        await update.message.reply_text("需要主人同意才能启用哦，只要主人吱一声就行 c:")
+
+        return GPT_INIT
+
+    async def owner_prove(self, update: Update, _):
+        if update.message.from_user.id == self._user_id:
+            if update.message.reply_to_message.text == "吱":
+                self._activate_instance = ChatAnywhereApi(token = self._key, proxy = self._proxy)
+                await update.message.reply_text(text = "准备OK)")
+
+                return GPT_OK
+
+    async def get_key(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        received_text = update.message.text_markdown
+        chat_id = update.message.chat_id
+        message_id = update.message.message_id
+        await context.bot.delete_message(chat_id, message_id)
+
+        if self._activate_instance is not None:
+            await update.message.reply_text(text = "不可以哟～，已经有一个实例在运行了")
+
+            return ConversationHandler.END
+
+        self._activate_instance = ChatAnywhereApi(token = received_text, proxy = self._proxy)
+
+        try:
+            await self._activate_instance.list_model()
+            await update.message.reply_text(text = "准备OK)")
+
+            return GPT_OK
+        except Exception as exc:
+            logger.error(f'[Chat Mode]: {exc}')
+            await update.message.reply_text(text = "唔...无效的密钥，再用 /chat 试试吧")
+
+            return ConversationHandler.END
+
+    async def enter_chat(self, update: Update, _):
+        user_input = update.message.text_markdown
+
+        try:
+            result = await self._activate_instance.chat(
+                user_input = user_input,
+                system_prompt = self._system_prompt,
+            )
+            message = result['answers'][0]['message']['content']
+            await update.message.reply_markdown(text = message, quote = False)
+        except Exception as exc:
+            logger.error(f'[Chat Mode]: {exc}')
+            await update.message.reply_text(text = f"oops, an error occurred: {exc}")
+
+    async def finish_chat(self, update: Update, _):
+        self._activate_instance = None
+        await update.message.reply_text("拜拜啦～")
+
+        return ConversationHandler.END
