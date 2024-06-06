@@ -12,7 +12,7 @@ COPY src /neko/src
 
 RUN apk add --no-cache --virtual .build-deps gcc musl-dev \
     && pip install --no-cache-dir -r requirements.txt \
-    && apk del --purge .build-deps \
+    && apk del --purge .build-deps
 
 VOLUME ["/media", "/log"]
 
