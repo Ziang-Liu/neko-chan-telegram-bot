@@ -39,15 +39,6 @@ class PandoraBox:
         self._proxy = proxy
         self._headers = {'User-Agent': UserAgent().random}
 
-    async def _get_url(self, query) -> Optional[List[str]]:
-        try:
-            async with AsyncClient(proxy = self._proxy) as client:
-                resp = await client.get(url = query, headers = self._headers)
-                if resp.status_code == 200:
-                    return re.findall(r'img src="(.*?)"', resp.text)
-        except Exception:
-            raise Exception(f"[Multi Query]: Failed to get image {query}")
-
     async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async def send_epub(url):
             instance = Telegraph(url, self._proxy)
@@ -116,16 +107,15 @@ class PandoraBox:
                 await send_epub(url = link_preview.url)
                 return ConversationHandler.END
             else:
-                link_url = await self._get_url(link_preview.url)
-                msg, mark = await search(link_url)
-                await update.message.reply_markdown(text = msg)
+                msg, mark = await search(link_preview.url)
+                await update.message.reply_markdown(msg, reply_markup = mark)
                 return ConversationHandler.END
 
         if filters.PHOTO.filter(update.message.reply_to_message):
             photo_file = update.message.reply_to_message.photo[2]
             file_link = (await context.bot.get_file(photo_file.file_id)).file_path
             msg, mark = await search(file_link)
-            await update.message.reply_markdown(text = msg, reply_markup = mark)
+            await update.message.reply_markdown(msg, reply_markup = mark)
             return ConversationHandler.END
 
         if filters.Sticker.ALL.filter(update.message.reply_to_message):
@@ -135,7 +125,7 @@ class PandoraBox:
 
             if attachment.is_video:
                 filename = attachment.file_unique_id + '.webm'
-                await update.message.reply_document(document = media, filename = filename)
+                await update.message.reply_document(media, filename = filename)
             else:
                 await update.message.reply_photo(photo = media)
 
@@ -144,7 +134,7 @@ class PandoraBox:
         if filters.Document.IMAGE.filter(update.message.reply_to_message):
             file_link = (await context.bot.get_file(attachment.thumbnail.file_id)).file_path
             msg, mark = await search(file_link)
-            await update.message.reply_markdown(text = msg, reply_markup = mark)
+            await update.message.reply_markdown(msg, reply_markup = mark)
             return ConversationHandler.END
         else:
             await update.message.reply_text("这是什么 OwO")
