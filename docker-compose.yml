@@ -25,5 +25,5 @@ services:
       - 'TZ=Asia/Shanghai'
 
     volumes:
-      - /localhost/path/to/media:/media
-      - /localhost/path/to/log:/log
+      - /localhost/path/to/media:/neko
+      - /localhost/path/to/log:/logs
