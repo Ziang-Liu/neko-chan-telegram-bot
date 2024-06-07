@@ -1,1 +1,1 @@
-from .V1Api import ChatAnywhereApi
+from .v1 import ChatAnywhereApi
