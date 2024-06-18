@@ -4,11 +4,11 @@ import json
 import aiohttp
 from fake_useragent import UserAgent
 
-from src.api.dmzj._Crypto import Crypto
+from src.api.dmzj._crypto import Crypto
 from src.utils.Logger import logger
 
 
-class ComicApi:
+class DmzjApi:
     def __init__(self):
         self._v3 = "https://nnv3api.dmzj.com"
         self._v4 = "https://nnv4api.dmzj.com"
