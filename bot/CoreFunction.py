@@ -1,17 +1,10 @@
 import asyncio
 import os
-import random
 import re
-from typing import (
-    List,
-    Optional
-)
+from typing import Optional
 
 from fake_useragent import UserAgent
-from httpx import (
-    AsyncClient,
-    Proxy
-)
+from httpx import Proxy
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -28,7 +21,8 @@ from src import (
     AggregationSearch,
     ChatAnywhereApi,
     logger,
-    Telegraph
+    Telegraph,
+    TraceMoeApi
 )
 
 (KOMGA, GPT_INIT, GPT_OK) = range(3)
@@ -40,82 +34,66 @@ class PandoraBox:
         self._headers = {'User-Agent': UserAgent().random}
 
     async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        async def send_epub(url):
-            instance = Telegraph(url, self._proxy)
-            await instance.get_epub()
+        async def send_epub(url) -> None:
+            telegraph = Telegraph(url, self._proxy)
+            await telegraph.get_epub()
 
-            if not os.path.exists(instance.epub_file_path):
-                await update.message.reply_text(text = "oops,下载好像出错了^QwQ^，过会再试试吧，对不起喵")
-                return ConversationHandler.END
-
-            if os.path.getsize(instance.epub_file_path) / (1024 * 1024) > 50:
-                await update.message.reply_text(text = "功能还没做，之后会发送 TempFile link（最大100MB限制）")
-                return ConversationHandler.END
+            if not os.path.exists(telegraph.epub_file_path):
+                await update.message.reply_text(text = "oops,下载好像出错了XwX，过会再试试吧")
+                return
 
             await update.message.reply_document(
-                document = instance.epub_file_path,
+                document = telegraph.epub_file_path,
                 connect_timeout = 30., write_timeout = 30., pool_timeout = 30., read_timeout = 30.
             )
 
-            return ConversationHandler.END
-
-        async def search(url) -> tuple[str, Optional[InlineKeyboardMarkup]]:
-            search_instance = AggregationSearch(proxy = self._proxy)
-            result = await search_instance.aggregation_search(url)
+        async def search_and_reply(url):
+            _search = AggregationSearch(proxy = self._proxy)
+            result = await _search.aggregation_search(url)
 
             if not result:
-                return "没有发现搜索结果 XwX", None
+                await update.message.reply_text("没有发现搜索结果 XwX")
+                return ConversationHandler.END
 
             _message = f"[🖼️]({result['url']}) Gacha (>ワ<) [😼]({result['thumbnail']})"
+            _buttons = None
 
             if result["class"] == "iqdb":
                 search_similarity = result['similarity']
                 search_source = result['source']
-                _reply_markup = InlineKeyboardMarkup([
+                _buttons = [
                     [InlineKeyboardButton(f"{search_source}: {search_similarity}% Match", url = result['url'])]
-                ])
-                return _message, _reply_markup
+                ]
 
-            if result["class"] == "ascii2d":
+            elif result["class"] == "ascii2d":
                 search_author = result['author']
                 search_author_url = result['author_url']
-                _reply_markup = InlineKeyboardMarkup([
+                _buttons = [
                     [InlineKeyboardButton("Original", url = result['url'])],
                     [InlineKeyboardButton(f"{search_author}", url = search_author_url)]
-                ])
-                return _message, _reply_markup
+                ]
 
-        if not filters.REPLY.filter(update.message):
-            if re.search(r'hug|cuddle|pet', update.message.text):
-                old_fashioned_words = ["唔嗯（蹭蹭）""Gyu～（抱紧）", "（*扑腾扑腾*）不可以突然这样，会害羞的啦～", "嗯哼（脸红）"]
-                await update.message.reply_text(random.choice(old_fashioned_words))
-            elif re.search(r'kiss|snog', update.message.text):
-                very_shy = ["(⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)", "(⁄ ⁄•⁄-⁄•⁄ ⁄)", "（*轻轻颤抖*）", "唔嗯，嗯，啊"]
-                await update.message.reply_text(random.choice(very_shy))
-
-            return ConversationHandler.END
+            _reply_markup = InlineKeyboardMarkup(_buttons)
+            await update.message.reply_markdown(_message, reply_markup = _reply_markup)
 
         link_preview = update.message.reply_to_message.link_preview_options
         attachment = update.message.reply_to_message.effective_attachment
 
         if link_preview:
-            if re.search(r'danbooru|x|twitter|pixiv|ascii|sauce', link_preview.url):
-                msg = "唔...用答案搜索答案？"
-                await update.message.reply_text(text = msg)
+            if re.search(r'booru|x|twitter|pixiv|ascii2d|saucenao', link_preview.url):
+                await update.message.reply_text("唔...用答案搜索答案？")
                 return ConversationHandler.END
             elif re.search(r'telegra.ph', link_preview.url):
-                await send_epub(url = link_preview.url)
+                await send_epub(link_preview.url)
                 return ConversationHandler.END
             else:
-                msg, mark = await search(link_preview.url)
-                await update.message.reply_markdown(msg, reply_markup = mark)
+                await search_and_reply(link_preview.url)
                 return ConversationHandler.END
 
         if filters.PHOTO.filter(update.message.reply_to_message):
             photo_file = update.message.reply_to_message.photo[2]
             file_link = (await context.bot.get_file(photo_file.file_id)).file_path
-            msg, mark = await search(file_link)
-            await update.message.reply_markdown(msg, reply_markup = mark)
+            await search_and_reply(file_link)
             return ConversationHandler.END
 
         if filters.Sticker.ALL.filter(update.message.reply_to_message):
@@ -133,12 +111,55 @@ class PandoraBox:
 
         if filters.Document.IMAGE.filter(update.message.reply_to_message):
             file_link = (await context.bot.get_file(attachment.thumbnail.file_id)).file_path
-            msg, mark = await search(file_link)
-            await update.message.reply_markdown(msg, reply_markup = mark)
+            await search_and_reply(file_link)
             return ConversationHandler.END
-        else:
-            await update.message.reply_text("这是什么 OwO")
 
+        await update.message.reply_text("这是什么 OwO")
+        return ConversationHandler.END
+
+    async def anime_search(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def search_and_reply(url):
+            def format_time(seconds):
+                minutes = int(seconds) // 60
+                remaining_seconds = int(seconds) % 60
+                return f"{minutes}m {remaining_seconds}s"
+
+            _search = TraceMoeApi(proxy = self._proxy)
+            result = (await _search.search_by_url(url))[0]
+            if not result['similarity'] <= 90.:
+                await update.message.reply_text("没有发现搜索结果 XwX")
+                return ConversationHandler.END
+
+            _anilist = f"https://anilist.co/anime/{result['anilist']}"
+            _buttons = [
+                [InlineKeyboardButton("Anilist", url = _anilist)],
+                [InlineKeyboardButton("Image Preview", url = result['image'])],
+                [InlineKeyboardButton("Video Preview", url = result['video'])],
+            ]
+            _message = (f"[🔎]({_anilist}) 搜索结果:\n"
+                        f"时间线: `{format_time(float(result['from']))}` - "
+                        f"`{format_time(float(result['to']))}`\n"
+                        f"剧集: `{result['episode']}`")
+            await update.message.reply_markdown(_message, reply_markup = InlineKeyboardMarkup(_buttons))
+
+        link_preview = update.message.reply_to_message.link_preview_options
+        attachment = update.message.reply_to_message.effective_attachment
+
+        if link_preview:
+            await search_and_reply(link_preview.url)
+
+        if filters.PHOTO.filter(update.message.reply_to_message):
+            photo_file = update.message.reply_to_message.photo[2]
+            file_link = (await context.bot.get_file(photo_file.file_id)).file_path
+            await search_and_reply(file_link)
+            return ConversationHandler.END
+
+        if filters.Document.IMAGE.filter(update.message.reply_to_message):
+            file_link = (await context.bot.get_file(attachment.thumbnail.file_id)).file_path
+            await search_and_reply(file_link)
+            return ConversationHandler.END
+
+        await update.message.reply_text("Unsupported type XwX")
         return ConversationHandler.END
 
 
@@ -150,10 +171,10 @@ class TelegraphHandler:
         self._idle_count = 0
 
         if user_id != -1:
-            komga_loop = asyncio.get_event_loop()
-            komga_loop.create_task(self._run_komga_task_periodically())
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._run_periodically())
 
-    async def _run_komga_task_periodically(self):
+    async def _run_periodically(self):
         async def process_queue(queue, num_tasks):
             self._idle_count = 0
             tasks = [Telegraph(await queue.get(), self._proxy) for _ in range(num_tasks)]
@@ -195,7 +216,7 @@ class TelegraphHandler:
         await self._get_link(update.message.text_markdown) if update.message.from_user.id == self._user_id else None
 
 
-class ChatHandler:
+class ChatAnywhereHandler:
     def __init__(self, proxy: Optional[Proxy] = None, user_id: int = -1, key: str | None = None) -> None:
         self._key = key
         self._user_id = user_id
@@ -212,12 +233,12 @@ class ChatHandler:
 
     async def key_init(self, update: Update, _):
         if update.message.chat.type in ['group', 'supergroup', 'channel']:
-            await update.message.reply_text(text = "Neko 并不能在 (SUPER)GROUP | CHANNEL 内打开这个功能哦")
+            await update.message.reply_text(text = "Neko 并不能在群组或频道内打开这个功能 XwX")
             return ConversationHandler.END
 
         if not self._key:
-            await update.message.reply_text(text = "没有配置 Chat Anywhere 密钥🔑哦 c:")
-            await update.message.reply_text("在这里发送密钥给 Neko 来启用聊天功能，发送后消息会被自动删除")
+            await update.message.reply_text(text = "未配置 Chat Anywhere 密钥🔑")
+            await update.message.reply_text("在这里发送密钥给 Neko 来启用聊天功能，发送后消息会被自动删除 c:")
             return GPT_INIT
 
         if update.message.from_user.id == self._user_id:
