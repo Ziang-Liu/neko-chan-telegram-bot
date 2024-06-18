@@ -4,50 +4,52 @@ Neko is a self-hosted Telegram bot designed with many useful functions c:, espec
 
 ## 💡 Features List
 
-### Telegram bot features
+### Telegram Bot Features
 
-- [x] Sticker download
-- [x] Telegraph Manga Epub upload
-- [x] Ascii2d, Iqdb image search
-- [x] Sync telegraph manga to server
-- [x] GPT Mode use ChatAnywhere Api
-- [ ] Dmzj notification
-- [ ] Upload manga from EX, EH, NH links
+- [x] Download stickers
+- [x] Upload manga as EPUB from Telegraph
+- [x] Image search using Ascii2d and Iqdb
+- [x] Sync manga from Telegraph to server
+- [x] ChatGPT assistant support
+- [x] Anime timeline search by using stickers(GIF)
+- [ ] Dmzj manga update notifications
+- [ ] Convert manga from Dmzj links to Telegraph
+- [ ] Convert manga from EX, EH, NH links to Telegraph
 
 ### Back-end
 
-- [x] Docker Hub image hosting (support arm64 and amd64).
-- [x] Organize manga from provided telegraph links (support [Komga](https://github.com/gotson/komga) and Tachiyomi).
-- [x] Epub conversion based on [ebooklib](https://github.com/aerkalov/ebooklib).
-- [x] Ascii2d, Iqdb search based on [PicImageSearch](https://github.com/kitUIN/PicImageSearch).
-- [x] Anime timeline search based on [trace.moe](https://github.com/soruly/trace.moe).
-- [x] ChatAnywhere v1 API integration.
-- [ ] Full Dmzj v3, v4 API integration.
-- [x] HTTP and socks5 proxy integration.
-- [ ] EX, EH, NH fetching.
+- [x] Host Docker images on Docker Hub (support for arm64 and amd64)
+- [x] Organize manga from provided Telegraph links (support for [Komga](https://github.com/gotson/komga) and Tachiyomi)
+- [x] Convert to EPUB using [ebooklib](https://github.com/aerkalov/ebooklib)
+- [x] Image search using [PicImageSearch](https://github.com/kitUIN/PicImageSearch) for Ascii2d and Iqdb search
+- [x] Integrate HTTP(S) and socks5 proxies
+- [x] Integrate [trace.moe](https://soruly.github.io/trace.moe-api/#/) API
+- [x] Integrate [ChatAnywhere](https://chatanywhere.apifox.cn/) v1 API
+- [ ] Fully integrate Dmzj v3 and v4 APIs
+- [ ] Fetch manga from EX, EH, NH sources
 
 ## 🔧 Docker Deployment
 
-### Get image
+### Get Image
 
-You can Pull image from **darinirvana/neko-chan:latest** or manually build
-from [Dockerfile](https://github.com/Ziang-Liu/Neko-Chan/blob/master/Dockerfile)
+You can pull the image from **darinirvana/neko-chan:latest** or manually build it from
+the [Dockerfile](https://github.com/Ziang-Liu/Neko-Chan/blob/master/Dockerfile).
 
-### Environment list:
+### Environment Variables:
 
-| Variable          | Hint                                        | Default                             |  
-|-------------------|---------------------------------------------|-------------------------------------|  
-| BOT_TOKEN         | required                                    | `None`                              |  
-| MY_USED_ID        | required if you need telegraph sync service | `-1`                                |  
-| BASE_URL          | official bot API URL                        | `https://api.telegram.org/bot`      |  
-| BASE_FILE_URL     | official file API URL                       | `https://api.telegram.org/file/bot` |  
-| PROXY             | required if can't connect to API directly   | `None`                              |  
-| TELEGRAPH_THREADS | how many images downloaded in singe rank    | `4`                                 |  
-| CHAT_ANYWHERE_KEY | for GPT use, optional                       | `None`                              |  
+| Variable          | Description                                       | Default                             |  
+|-------------------|---------------------------------------------------|-------------------------------------|  
+| BOT_TOKEN         | Required                                          | `None`                              |  
+| MY_USED_ID        | Required if you need Telegraph sync service       | `-1`                                |  
+| BASE_URL          | Official bot API URL                              | `https://api.telegram.org/bot`      |  
+| BASE_FILE_URL     | Official file API URL                             | `https://api.telegram.org/file/bot` |  
+| PROXY             | Required if you can't connect to the API directly | `None`                              |  
+| TELEGRAPH_THREADS | Number of images downloaded in a single batch     | `4`                                 |  
+| CHAT_ANYWHERE_KEY | For GPT use, optional                             | `None`                              |  
 
-### Additional
+### Additional Information
 
-Mount `/path/to/your/localhost` to `/neko`
+Mount `/path/to/your/localhost` to `/neko`.
 
 ## 📝 Bot Config
 
