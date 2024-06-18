@@ -12,7 +12,7 @@ from telegram.ext import (
 
 from bot import (
     Basic,
-    ChatHandler,
+    ChatAnywhereHandler,
     GPT_OK,
     GPT_INIT,
     KOMGA,
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     working_dirs = ['/neko/komga', '/neko/dmzj', '/neko/epub', '/neko/.temp']
     [os.makedirs(name = working_dir, exist_ok = True, mode = 0o777) for working_dir in working_dirs]
 
-    print(R"""
+    logger.info(R"""
               _   _          _                 ____   _                      
              | \ | |   ___  | | __   ___      / ___| | |__     __ _   _ __   
              |  \| |  / _ \ | |/ /  / _ \    | |     | '_ \   / _` | | '_ \  
@@ -72,10 +72,17 @@ if __name__ == "__main__":
 
     pandora = PandoraBox(proxy = proxy)
     auto_parse_reply = CommandHandler(
-        command = ["hug", "cuddle", "kiss", "snog", "pet"], callback = pandora.auto_parse_reply,
-        filters = filters.REPLY | filters.TEXT
+        command = ["hug", "cuddle", "kiss", "snog", "pet"],
+        callback = pandora.auto_parse_reply,
+        filters = filters.REPLY
     )
     neko_chan.add_handler(auto_parse_reply)
+    anime_search = CommandHandler(
+        command = "anime",
+        callback = pandora.anime_search,
+        filters = filters.REPLY
+    )
+    neko_chan.add_handler(anime_search)
 
     if _myself_id == -1:
         logger.info("[Main]: Master's user id not set, telegraph syncing service will not work.")
@@ -89,7 +96,7 @@ if __name__ == "__main__":
         )
         neko_chan.add_handler(telegraph_conversation)
 
-    chat_mode = ChatHandler(
+    chat_mode = ChatAnywhereHandler(
         proxy = proxy,
         user_id = int(_myself_id) if _myself_id else None,
         key = _gpt_key if _gpt_key else None
