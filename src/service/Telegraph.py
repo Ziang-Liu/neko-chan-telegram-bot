@@ -59,32 +59,26 @@ class Telegraph:
                 async with aiofiles.open(target_path, 'wb') as f:
                     await f.write(await response.aread())
 
-            try:
-                resp = await client.get(url, headers = self._headers)
-                if resp.status_code == 200:
-                    await write_image(resp, image_path)
-                    return
-            except Exception:
-                raise Exception(f"Failed to download image {url}")
+            resp = await client.get(url, headers = self._headers)
+            await write_image(resp.raise_for_status(), image_path)
 
         async def create_queue():
             async def worker(queue: asyncio.Queue, client: AsyncClient):
                 while True:
-                    img_num, url = await queue.get()
-
-                    if url is None:
+                    _num, _url = await queue.get()
+                    if _url is None:
+                        queue.task_done()
                         break
 
-                    img_path = os.path.join(self._download_path, f'{img_num}.jpg')
-                    await image_handler(client, url, img_path)
+                    await image_handler(client, _url, os.path.join(self._download_path, f'{_num}.jpg'))
                     queue.task_done()
 
             fixed_length_rank = asyncio.Queue()
             [fixed_length_rank.put_nowait((i, img_url)) for i, img_url in enumerate(self._image_url_list)]
 
-            async with httpx.AsyncClient(timeout = 10, proxy = self._proxy) as c:
+            async with httpx.AsyncClient(timeout = 10, proxy = self._proxy) as _client:
                 tasks = []
-                [tasks.append(asyncio.create_task(worker(fixed_length_rank, c))) for _ in range(self._thread)]
+                [tasks.append(asyncio.create_task(worker(fixed_length_rank, _client))) for _ in range(self._thread)]
                 await fixed_length_rank.join()
                 [fixed_length_rank.put_nowait((None, None)) for _ in range(self._thread)]
                 await asyncio.gather(*tasks)
@@ -133,12 +127,9 @@ class Telegraph:
             self._download_path = os.path.join(self._temp_folder, self.title)
             logger.info(f"[Telegraph]: Start job for '{self.title_raw}'")
 
-        try:
-            async with AsyncClient(timeout = 10, proxy = self._proxy) as client:
-                resp = await client.get(url = self.url, headers = self._headers)
-                await regex(resp) if resp.status_code == 200 else None
-        except Exception:
-            raise Exception(f"Info init failed for {self.url}")
+        async with AsyncClient(timeout = 10, proxy = self._proxy) as client:
+            resp = await client.get(url = self.url, headers = self._headers)
+            await regex(resp.raise_for_status())
 
     async def _process_handler(self, is_zip = False, is_epub = False) -> None:
         async def create_zip() -> None:
