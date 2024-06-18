@@ -1,2 +1,5 @@
-from .dmzj.ComicApi import ComicApi
-from .chatanywhere.v1 import ChatAnywhereApi
+# __init__.py
+
+from .chatanywhere import ChatAnywhereApi
+from .dmzj import DmzjApi
+from .tracemoe import TraceMoeApi

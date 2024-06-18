@@ -1,1 +1,3 @@
-from .v1 import ChatAnywhereApi
+# __init__.py
+
+from .api_v1 import ChatAnywhereApi
