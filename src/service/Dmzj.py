@@ -1,7 +1,7 @@
-from src.api.dmzj.ComicApi import ComicApi
+from src.api.dmzj.api import DmzjApi
 
 if __name__ == "__main__":
-    comic = ComicApi()
+    comic = DmzjApi()
     random = comic.random()
     hot = comic.hot()
     carousel = comic.carousel()
