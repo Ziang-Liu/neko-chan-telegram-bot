@@ -25,6 +25,8 @@ class AggregationSearch:
         self._proxy = proxy
         self._ascii2d: List = []
         self._ascii2d_bovw: List = []
+
+        self.media = b''
         self.ascii2d_result: Dict = {}
         self.iqdb_result: Dict = {}
 
@@ -39,14 +41,13 @@ class AggregationSearch:
                 proxies = self._proxy, follow_redirects = True
         ) as client:
             resp = await client.get(_url)
-
-            return resp.raise_for_status().content
+            self.media = resp.raise_for_status().content
 
     async def _search_with_type(self, url: str, function, client_class):
         async with Network(proxies = self._proxy) as client:
-            media = await self.get_media(url)
+            await self.get_media(url) if not self.media else None
             search_instance = client_class(client = client)
-            results = await function(search_instance, file = media)
+            results = await function(search_instance, file = self.media)
             if not results.raw:
                 raise Exception("No search results")
 

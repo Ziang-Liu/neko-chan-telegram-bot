@@ -98,14 +98,14 @@ class PandoraBox:
 
         if filters.Sticker.ALL.filter(update.message.reply_to_message):
             sticker_url = (await context.bot.get_file(attachment.file_id)).file_path
-            sticker_instance = AggregationSearch(proxy = self._proxy)
-            media = await sticker_instance.get_media(sticker_url)
+            get_sticker = AggregationSearch(proxy = self._proxy)
+            await get_sticker.get_media(sticker_url)
 
             if attachment.is_video:
                 filename = attachment.file_unique_id + '.webm'
-                await update.message.reply_document(media, filename = filename)
+                await update.message.reply_document(get_sticker.media, filename = filename)
             else:
-                await update.message.reply_photo(photo = media)
+                await update.message.reply_photo(photo = get_sticker.media)
 
             return ConversationHandler.END
 
