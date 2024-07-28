@@ -9,7 +9,7 @@ class EnvironmentReader:
         self.CHAT_ANYWHERE_KEY = os.getenv('CHAT_ANYWHERE_KEY', None)
         self.MY_USER_ID = int(os.getenv('MY_USER_ID', -1))
         self.PROXY = os.getenv('PROXY', None)
-        self.CF_WORKER_PROXY = os.getenv('CF_WORKER_URL', None)
+        self.CF_WORKER_PROXY = os.getenv('CF_WORKER_PROXY', None)
         self.TELEGRAPH_THREADS = int(os.getenv('TELEGRAPH_THREADS', 2))
 
     def print_env(self):

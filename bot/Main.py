@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     _env = EnvironmentReader()
 
-    worker_proxy = _env.get_variable("CF_WORKER_URL")
+    worker_proxy = _env.get_variable("CF_WORKER_PROXY")
     _proxy = _env.get_variable("PROXY")
 
     _bot_token = _env.get_variable("BOT_TOKEN")
