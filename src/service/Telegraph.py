@@ -18,8 +18,9 @@ from src.utils.Logger import logger
 
 
 class Telegraph:
-    def __init__(self, url: str | URL, proxy: Optional[Proxy] = None) -> None:
-        self.url = url
+    def __init__(self, url: str, proxy: Optional[Proxy] = None, cf_proxy: Optional[str] = None) -> None:
+        self.url = f'{cf_proxy}/{url}' if cf_proxy else url
+        self._base_url = f'{cf_proxy}/https://telegra.ph' if cf_proxy else 'https://telegra.ph'
         self._proxy = proxy
         self._headers = {'User-Agent': UserAgent().random}
 
@@ -95,7 +96,7 @@ class Telegraph:
 
     async def _get_info_handler(self, is_zip = False, is_epub = False) -> None:
         async def regex(response: Response) -> None:
-            self._image_url_list = ['https://telegra.ph' + i for i in re.findall(r'img src="(.*?)"', response.text)]
+            self._image_url_list = [self._base_url + i for i in re.findall(r'img src="(.*?)"', response.text)]
             self.title_raw = re.sub(
                 r'\*|\||\?|– Telegraph| |/|:',
                 lambda x: {'*': '٭', '|': '丨', '?': '？', '– Telegraph': '', ' ': '', '/': 'ǀ', ':': '∶'}[x.group()],

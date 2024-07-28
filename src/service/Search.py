@@ -21,10 +21,12 @@ def parse_cookies(cookies_str: Optional[str] = None) -> Dict[str, str]:
 
 
 class AggregationSearch:
-    def __init__(self, proxy: None | Proxy = None):
+    def __init__(self, proxy: Optional[Proxy] = None, cf_proxy: Optional[str] = None):
         self._proxy = proxy
+        self._cf_proxy = cf_proxy
         self._ascii2d: List = []
         self._ascii2d_bovw: List = []
+        self._exception = []
 
         self.media = b''
         self.ascii2d_result: Dict = {}
@@ -43,22 +45,33 @@ class AggregationSearch:
             resp = await client.get(_url)
             self.media = resp.raise_for_status().content
 
-    async def _search_with_type(self, url: str, function, client_class):
+    async def _search_with_type(self, url: str, type: str):
         async with Network(proxies = self._proxy) as client:
             await self.get_media(url) if not self.media else None
-            search_instance = client_class(client = client)
-            results = await function(search_instance, file = self.media)
-            if not results.raw:
-                raise Exception("No search results")
 
-            if client_class == Ascii2D:
-                resp_text, resp_url, _ = await search_instance.get(results.url.replace("/color/", "/bovw/"))
-                bovw_results = Ascii2DResponse(resp_text, resp_url)
-                tasks = [self._format_ascii2d_result(bovw_results, True),
-                         self._format_ascii2d_result(results)]
+            if type == "ascii2d":
+                base_url = f'{self._cf_proxy}/https://ascii2d.net' if self._cf_proxy else 'https://ascii2d.net'
+                search = Ascii2D(base_url = base_url, client = client)
+                resp = await Ascii2D.search(search, file = self.media)
+                if not resp.raw:
+                    raise Exception(f"No ascii2d search results for {url}")
+
+                resp_text, resp_url, _ = await search.get(resp.url.replace("/color/", "/bovw/"))
+                bovw_resp = Ascii2DResponse(resp_text, resp_url)
+
+                tasks = [self._format_ascii2d_result(bovw_resp, True),
+                         self._format_ascii2d_result(resp)]
                 await asyncio.gather(*tasks)
-            elif client_class == Iqdb:
-                await self._format_iqdb_result(results)
+
+            if type == "iqdb":
+                base_url = f'{self._cf_proxy}/https://iqdb.org' if self._cf_proxy else 'https://iqdb.org'
+                base_url_3d = f'{self._cf_proxy}/https://3d.iqdb.org' if self._cf_proxy else 'https://3d.iqdb.org'
+                search = Iqdb(base_url = base_url, base_url_3d = base_url_3d, client = client)
+                resp = await Iqdb.search(search, file = self.media)
+                if not resp.raw:
+                    raise Exception(f"No iqdb search results for {url}")
+
+                await self._format_iqdb_result(resp)
 
     async def _format_iqdb_result(self, resp: IqdbResponse):
         selected_res: IqdbItem = resp.raw[0]
@@ -98,14 +111,20 @@ class AggregationSearch:
                 break
 
     async def iqdb_search(self, url: str):
-        await self._search_with_type(url, Iqdb.search, Iqdb)
+        try:
+            await self._search_with_type(url, 'iqdb')
+        except Exception as e:
+            self._exception.append(e)
 
     async def ascii2d_search(self, url):
-        await self._search_with_type(url, Ascii2D.search, Ascii2D)
+        try:
+            await self._search_with_type(url, 'ascii2d')
 
-        for i in range(min(len(self._ascii2d_bovw), len(self._ascii2d))):
-            if self._ascii2d[i]["url"] == self._ascii2d_bovw[i]["url"]:
-                self.ascii2d_result = self._ascii2d[i]
+            for i in range(min(len(self._ascii2d_bovw), len(self._ascii2d))):
+                if self._ascii2d[i]["url"] == self._ascii2d_bovw[i]["url"]:
+                    self.ascii2d_result = self._ascii2d[i]
+        except Exception as e:
+            self._exception.append(e)
 
     async def aggregation_search(self, url: str) -> Optional[Dict]:
         tasks = [self.iqdb_search(url), self.ascii2d_search(url)]
