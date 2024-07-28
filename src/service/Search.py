@@ -26,8 +26,8 @@ class AggregationSearch:
         self._cf_proxy = cf_proxy
         self._ascii2d: List = []
         self._ascii2d_bovw: List = []
-        self._exception = []
 
+        self.exception = []
         self.media = b''
         self.ascii2d_result: Dict = {}
         self.iqdb_result: Dict = {}
