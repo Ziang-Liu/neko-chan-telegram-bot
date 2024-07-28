@@ -69,7 +69,7 @@ if __name__ == "__main__":
     neko_chan.add_handler(CommandHandler("start", Basic.introduce))
     neko_chan.add_handler(CommandHandler("help", Basic.instructions))
 
-    pandora = PandoraBox(proxy = proxy)
+    pandora = PandoraBox(proxy = proxy, cf_proxy = worker_proxy)
     auto_parse_reply = CommandHandler(
         command = ["hug", "cuddle", "kiss", "snog", "pet"],
         callback = pandora.auto_parse_reply,

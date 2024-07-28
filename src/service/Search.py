@@ -147,7 +147,7 @@ class AggregationSearch:
             self.exception.append(e)
 
     async def aggregation_search(self, url: str) -> Optional[Dict]:
-        tasks = [self.iqdb_search(url), self.ascii2d_search(url), self.google_search(url)]
+        tasks = [self.iqdb_search(url), self.ascii2d_search(url)]
         await asyncio.gather(*tasks)
 
-        return self.ascii2d_result if self.ascii2d_result else self.iqdb_result
+        return self.iqdb_result if self.iqdb_result else self.ascii2d_result
