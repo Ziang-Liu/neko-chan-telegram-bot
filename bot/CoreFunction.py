@@ -52,7 +52,7 @@ class PandoraBox:
             _search = AggregationSearch(proxy = self._proxy, cf_proxy = self._cf_proxy)
             result = await _search.aggregation_search(url)
 
-            if _search.exception:
+            if len(_search.exception) == 2:
                 err_message = ''.join([f'{e}\n' for e in _search.exception])
                 await update.message.reply_text(err_message)
                 return ConversationHandler.END

@@ -54,7 +54,7 @@ class AggregationSearch:
                 search = Ascii2D(base_url = base_url, client = client)
                 resp = await Ascii2D.search(search, file = self.media)
                 if not resp.raw:
-                    raise Exception(f"No ascii2d search results for {url}")
+                    raise Exception(f"No ascii2d search results, search url: {resp.url}")
 
                 resp_text, resp_url, _ = await search.get(resp.url.replace("/color/", "/bovw/"))
                 bovw_resp = Ascii2DResponse(resp_text, resp_url)
@@ -69,7 +69,7 @@ class AggregationSearch:
                 search = Iqdb(base_url = base_url, base_url_3d = base_url_3d, client = client)
                 resp = await Iqdb.search(search, file = self.media)
                 if not resp.raw:
-                    raise Exception(f"No iqdb search results for {url}")
+                    raise Exception(f"No iqdb search results, search url: {resp.url}")
 
                 await self._format_iqdb_result(resp)
 
