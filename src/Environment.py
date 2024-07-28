@@ -13,10 +13,10 @@ class EnvironmentReader:
         self.TELEGRAPH_THREADS = int(os.getenv('TELEGRAPH_THREADS', 2))
 
     def print_env(self):
-        logger.info(f"[Env]: Master user id: {self.MY_USER_ID}") if self.MY_USER_ID is not -1 else None
+        logger.info(f"[Env]: Master user id: {self.MY_USER_ID}")
         logger.info(f"[Env]: Telegraph threads: {self.TELEGRAPH_THREADS}")
-        logger.info(f"[Env]: Proxy: {self.PROXY}") if not self.PROXY else None
-        logger.info(f"[Env]: CloudFlare Worker Proxy: {self.CF_WORKER_PROXY}") if not self.CF_WORKER_PROXY else None
+        logger.info(f"[Env]: Proxy: {self.PROXY}")
+        logger.info(f"[Env]: CloudFlare Worker Proxy: {self.CF_WORKER_PROXY}")
 
     def print_attribute(self, attribute_name):
         if hasattr(self, attribute_name):
