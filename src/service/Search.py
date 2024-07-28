@@ -114,7 +114,7 @@ class AggregationSearch:
         try:
             await self._search_with_type(url, 'iqdb')
         except Exception as e:
-            self._exception.append(e)
+            self.exception.append(e)
 
     async def ascii2d_search(self, url):
         try:
@@ -124,7 +124,7 @@ class AggregationSearch:
                 if self._ascii2d[i]["url"] == self._ascii2d_bovw[i]["url"]:
                     self.ascii2d_result = self._ascii2d[i]
         except Exception as e:
-            self._exception.append(e)
+            self.exception.append(e)
 
     async def aggregation_search(self, url: str) -> Optional[Dict]:
         tasks = [self.iqdb_search(url), self.ascii2d_search(url)]
