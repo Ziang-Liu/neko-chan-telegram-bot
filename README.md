@@ -22,9 +22,10 @@ Neko is a self-hosted Telegram bot designed with many useful functions c:, espec
 - [x] Organize manga from provided Telegraph links (support for [Komga](https://github.com/gotson/komga) and Tachiyomi)
 - [x] Convert to EPUB using [ebooklib](https://github.com/aerkalov/ebooklib)
 - [x] Image search using [PicImageSearch](https://github.com/kitUIN/PicImageSearch) for Ascii2d and Iqdb search
-- [x] Integrate HTTP(S) and socks5 proxies
 - [x] Integrate [trace.moe](https://soruly.github.io/trace.moe-api/#/) API
 - [x] Integrate [ChatAnywhere](https://chatanywhere.apifox.cn/) v1 API
+- [x] HTTP(S) and socks5 proxies support
+- [x] CloudFlare Worker proxy support based on [Cloudflare-Workers-Proxy](https://github.com/ymyuuu/Cloudflare-Workers-Proxy)
 - [ ] Fully integrate Dmzj v3 and v4 APIs
 - [ ] Fetch manga from EX, EH, NH sources
 
@@ -41,8 +42,7 @@ the [Dockerfile](https://github.com/Ziang-Liu/Neko-Chan/blob/master/Dockerfile).
 |-------------------|---------------------------------------------------|-------------------------------------|  
 | BOT_TOKEN         | Required                                          | `None`                              |  
 | MY_USED_ID        | Required if you need Telegraph sync service       | `-1`                                |  
-| BASE_URL          | Official bot API URL                              | `https://api.telegram.org/bot`      |  
-| BASE_FILE_URL     | Official file API URL                             | `https://api.telegram.org/file/bot` |  
+| CF_WORKER_PROXY   | CloudFlare Worker proxy                           | `Nonw`                              |
 | PROXY             | Required if you can't connect to the API directly | `None`                              |  
 | TELEGRAPH_THREADS | Number of images downloaded in a single batch     | `4`                                 |  
 | CHAT_ANYWHERE_KEY | For GPT use, optional                             | `None`                              |  
