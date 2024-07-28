@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from urllib.parse import quote_plus
 
 from fake_useragent import UserAgent
@@ -6,12 +6,17 @@ from httpx import AsyncClient, Proxy
 
 
 class TraceMoeApi:
-    def __init__(self, proxy: Proxy | None = None):
-        self._base = "https://api.trace.moe"
-        self._search_with_file = "https://api.trace.moe/search"
-        self._search_by_url = "https://api.trace.moe/search?url={}"
-        self._search_by_url_with_cut_boarder = "https://api.trace.moe/search?cutBorders&url={}"
-        self._search_by_url_with_anilist = "https://api.trace.moe/search?anilistInfo&url={}"
+    def __init__(self, proxy: Optional[Proxy] = None, cf_proxy: Optional[str] = None):
+        _base = "https://api.trace.moe"
+        _file_search = "https://api.trace.moe/search"
+        _url_search = "https://api.trace.moe/search?url={}"
+        _url_search_cb = "https://api.trace.moe/search?cutBorders&url={}"
+        _url_search_al = "https://api.trace.moe/search?anilistInfo&url={}"
+        self._base = f'{cf_proxy}/{_base}' if cf_proxy else _base
+        self._search_with_file = f'{cf_proxy}/{_file_search}' if cf_proxy else _file_search
+        self._search_by_url = f'{_base}/{_url_search}' if cf_proxy else _url_search
+        self._search_by_url_with_cut_boarder = f'{_base}/{_url_search_cb}' if cf_proxy else _url_search_cb
+        self._search_by_url_with_anilist = f'{_base}/{_url_search_al}' if cf_proxy else _url_search_al
         self._proxy = proxy
 
     async def _search(self, api: str, url: str | None = None, data: bytes | None = None):

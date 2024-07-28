@@ -9,6 +9,7 @@ class ChatAnywhereApi:
             self,
             token: str | None = None,
             proxy: Optional[URL] | Optional[Proxy] | Optional[str] = None,
+            cf_proxy: Optional[str] = None
     ) -> None:
 
         if not token:
@@ -17,7 +18,7 @@ class ChatAnywhereApi:
         self._proxy = proxy
         self._token = token
         self._user_agent = 'Apifox/1.0.0 (https://apifox.com)'
-        self._base_url = 'https://api.chatanywhere.tech'
+        self._base_url = f'{cf_proxy}/https://api.chatanywhere.tech' if cf_proxy else 'https://api.chatanywhere.tech'
 
     async def _request(self, method: str, endpoint: str, payload: str = None, auth_type: int = 0) -> json:
         """
