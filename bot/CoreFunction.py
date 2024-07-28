@@ -29,13 +29,14 @@ from src import (
 
 
 class PandoraBox:
-    def __init__(self, proxy: None | Proxy = None) -> None:
+    def __init__(self, proxy: Optional[Proxy] = None, cf_proxy: Optional[str] = None) -> None:
         self._proxy = proxy
+        self._cf_proxy = cf_proxy
         self._headers = {'User-Agent': UserAgent().random}
 
     async def auto_parse_reply(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         async def send_epub(url) -> None:
-            telegraph = Telegraph(url, self._proxy)
+            telegraph = Telegraph(url, self._proxy, self._cf_proxy)
             await telegraph.get_epub()
 
             if not os.path.exists(telegraph.epub_file_path):
@@ -48,11 +49,17 @@ class PandoraBox:
             )
 
         async def search_and_reply(url):
-            _search = AggregationSearch(proxy = self._proxy)
+            _search = AggregationSearch(proxy = self._proxy, cf_proxy = self._cf_proxy)
             result = await _search.aggregation_search(url)
 
+            if _search.exception:
+                err_message = ''
+                err_message += [f'{e}\n' for e in _search.exception]
+                await update.message.reply_text(err_message)
+                return ConversationHandler.END
+
             if not result:
-                await update.message.reply_text("没有发现搜索结果 XwX")
+                await update.message.reply_text(f"没有发现对{url}的搜索结果 XwX")
                 return ConversationHandler.END
 
             _message = f"[🖼️]({result['url']}) Gacha (>ワ<) [😼]({result['thumbnail']})"
@@ -132,7 +139,7 @@ class PandoraBox:
 
             _anilist = f"https://anilist.co/anime/{result['anilist']}"
             _buttons = [
-                [InlineKeyboardButton("Anilist", url = _anilist)],
+                [InlineKeyboardButton("AniList", url = _anilist)],
                 [InlineKeyboardButton("Image Preview", url = result['image'])],
                 [InlineKeyboardButton("Video Preview", url = result['video'])],
             ]
@@ -277,9 +284,7 @@ class ChatAnywhereHandler:
             await update.message.reply_text(text = message, quote = False)
         except Exception as exc:
             logger.error(f'[Chat Mode]: {exc}')
-            await update.message.reply_text("API server error XwX\n"
-                                            "高可能: ChatAnywhere 免费接口不稳定\n"
-                                            "潜在可能：密钥token余额不足")
+            await update.message.reply_text(str(exc))
 
     async def finish_chat(self, update: Update, _):
         self._hosted_instances.pop(update.message.from_user.id)
