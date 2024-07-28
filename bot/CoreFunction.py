@@ -53,8 +53,7 @@ class PandoraBox:
             result = await _search.aggregation_search(url)
 
             if _search.exception:
-                err_message = ''
-                err_message += [f'{e}\n' for e in _search.exception]
+                err_message = ''.join([f'{e}\n' for e in _search.exception])
                 await update.message.reply_text(err_message)
                 return ConversationHandler.END
 
