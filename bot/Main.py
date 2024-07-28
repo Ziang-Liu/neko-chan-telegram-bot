@@ -43,29 +43,28 @@ if __name__ == "__main__":
     """)
 
     _env = EnvironmentReader()
-    _base_url = _env.get_variable("BASE_URL")
-    _base_file_url = _env.get_variable("BASE_FILE_URL")
+
+    worker_proxy = _env.get_variable("CF_WORKER_URL")
+    _proxy = _env.get_variable("PROXY")
+
     _bot_token = _env.get_variable("BOT_TOKEN")
     _myself_id = _env.get_variable("MY_USER_ID")
-    _proxy = _env.get_variable("PROXY")
     _gpt_key = _env.get_variable("CHAT_ANYWHERE_KEY")
+
+    _base_url = 'https://api.telegram.org/bot'
+    _base_file_url = 'https://api.telegram.org/file/bot'
+    base_url = f'{worker_proxy}/{_base_url}' if worker_proxy else _base_url
+    base_file_url = f'{worker_proxy}/{_base_file_url}' if worker_proxy else _base_file_url
 
     if not _bot_token:
         logger.error("[Main]: Bot token not set, please fill right params and try again.")
         exit(1)
 
-    if _proxy:
-        proxy = proxy_init(_proxy)
-        neko_chan = (ApplicationBuilder().token(_bot_token).
-                     proxy(proxy).get_updates_proxy(proxy).
-                     pool_timeout(30.).connect_timeout(30.).
-                     base_url(_base_url).base_file_url(_base_file_url).build())
-    else:
-        proxy = None
-        logger.info("[Main]: Proxy not set, make sure you can directly connect to telegram server.")
-        neko_chan = (ApplicationBuilder().token(_bot_token).
-                     pool_timeout(30.).connect_timeout(30.).
-                     base_url(_base_url).base_file_url(_base_file_url).build())
+    proxy = proxy_init(_proxy) if _proxy else None
+    neko_chan = (ApplicationBuilder().token(_bot_token).
+                 proxy(proxy).get_updates_proxy(proxy).
+                 pool_timeout(30.).connect_timeout(30.).
+                 base_url(base_url).base_file_url(base_file_url).build())
 
     neko_chan.add_handler(CommandHandler("start", Basic.introduce))
     neko_chan.add_handler(CommandHandler("help", Basic.instructions))
