@@ -25,7 +25,7 @@ Neko is a self-hosted Telegram bot designed with many useful functions c:, espec
 - [x] Integrate [trace.moe](https://soruly.github.io/trace.moe-api/#/) API
 - [x] Integrate [ChatAnywhere](https://chatanywhere.apifox.cn/) v1 API
 - [x] HTTP(S) and socks5 proxies support
-- [x] CloudFlare Worker proxy support based on [Cloudflare-Workers-Proxy](https://github.com/ymyuuu/Cloudflare-Workers-Proxy)
+- [x] CloudFlare Workers proxy support based on [Cloudflare-Workers-Proxy](https://github.com/ymyuuu/Cloudflare-Workers-Proxy)
 - [ ] Fully integrate Dmzj v3 and v4 APIs
 - [ ] Fetch manga from EX, EH, NH sources
 
@@ -38,14 +38,14 @@ the [Dockerfile](https://github.com/Ziang-Liu/Neko-Chan/blob/master/Dockerfile).
 
 ### Environment Variables:
 
-| Variable          | Description                                       | Default                             |  
-|-------------------|---------------------------------------------------|-------------------------------------|  
-| BOT_TOKEN         | Required                                          | `None`                              |  
-| MY_USED_ID        | Required if you need Telegraph sync service       | `-1`                                |  
-| CF_WORKER_PROXY   | CloudFlare Worker proxy                           | `Nonw`                              |
-| PROXY             | Required if you can't connect to the API directly | `None`                              |  
-| TELEGRAPH_THREADS | Number of images downloaded in a single batch     | `4`                                 |  
-| CHAT_ANYWHERE_KEY | For GPT use, optional                             | `None`                              |  
+| Variable          | Description                                       | Default |  
+|-------------------|---------------------------------------------------|---------|  
+| BOT_TOKEN         | Required                                          | `None`  |  
+| MY_USED_ID        | Required if you need Telegraph sync service       | `-1`    |  
+| CF_WORKER_PROXY   | CloudFlare Workers proxy                          | `None`  |
+| PROXY             | Required if you can't connect to the API directly | `None`  |  
+| TELEGRAPH_THREADS | Number of images downloaded in a single batch     | `4`     |  
+| CHAT_ANYWHERE_KEY | For GPT use, optional                             | `None`  |  
 
 ### Additional Information
 
