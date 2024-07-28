@@ -1,9 +1,9 @@
 import asyncio
 from typing import Dict, Optional, List
 
-from PicImageSearch import Ascii2D, Iqdb
+from PicImageSearch import Ascii2D, Iqdb, Google
 from PicImageSearch import Network
-from PicImageSearch.model import Ascii2DResponse, IqdbResponse, IqdbItem
+from PicImageSearch.model import Ascii2DResponse, IqdbResponse, IqdbItem, GoogleResponse
 from fake_useragent import UserAgent
 from httpx import Proxy
 from httpx import URL, AsyncClient
@@ -31,6 +31,7 @@ class AggregationSearch:
         self.media = b''
         self.ascii2d_result: Dict = {}
         self.iqdb_result: Dict = {}
+        self.google_result: Dict = {}
 
     async def get_media(self, url: str, cookies: Optional[str] = None):
         _url: URL = URL(url)
@@ -73,6 +74,20 @@ class AggregationSearch:
 
                 await self._format_iqdb_result(resp)
 
+            if type == "google":
+                base_url = f'{self._cf_proxy}/https://google.com' if self._cf_proxy else 'https://google.com'
+                search = Google(base_url = base_url, client = client)
+                resp = await Google.search(search, file = self.media)
+                if not resp.raw:
+                    raise Exception(f"No google search results, search url: {resp.url}")
+
+                await self._format_google_result(resp)
+
+    async def _format_google_result(self, resp: GoogleResponse):
+        self.google_result["thumbnail"] = resp.raw[2].thumbnail
+        self.google_result["title"] = resp.raw[2].title
+        self.google_result["url"] = resp.raw[2].url
+
     async def _format_iqdb_result(self, resp: IqdbResponse):
         selected_res: IqdbItem = resp.raw[0]
         danbooru_res: List[IqdbItem] = [i for i in resp.raw if i.source == "Danbooru"]
@@ -94,7 +109,6 @@ class AggregationSearch:
         self.iqdb_result["source"] = selected_res.source
 
     async def _format_ascii2d_result(self, resp: Ascii2DResponse, bovw: bool = False):
-
         target: List = self._ascii2d_bovw if bovw else self._ascii2d
 
         for i, r in enumerate(resp.raw):
@@ -126,8 +140,14 @@ class AggregationSearch:
         except Exception as e:
             self.exception.append(e)
 
+    async def google_search(self, url):
+        try:
+            await self._search_with_type(url, 'google')
+        except Exception as e:
+            self.exception.append(e)
+
     async def aggregation_search(self, url: str) -> Optional[Dict]:
-        tasks = [self.iqdb_search(url), self.ascii2d_search(url)]
+        tasks = [self.iqdb_search(url), self.ascii2d_search(url), self.google_search(url)]
         await asyncio.gather(*tasks)
 
-        return self.iqdb_result if self.iqdb_result else self.ascii2d_result
+        return self.ascii2d_result if self.ascii2d_result else self.iqdb_result

@@ -52,13 +52,18 @@ class PandoraBox:
             _search = AggregationSearch(proxy = self._proxy, cf_proxy = self._cf_proxy)
             result = await _search.aggregation_search(url)
 
-            if len(_search.exception) == 2:
+            if len(_search.exception) == 3:
                 err_message = ''.join([f'{e}\n' for e in _search.exception])
                 await update.message.reply_text(err_message)
                 return ConversationHandler.END
 
             if not result:
-                await update.message.reply_text(f"没有发现对{url}的搜索结果 XwX")
+                _url = _search.google_result['url']
+                _reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("URL", url=_url)]])
+                await update.message.reply_markdown(
+                    f"没有发现准确搜索结果[😿]({_url}), 此结果并不可靠",
+                    reply_markup = _reply_markup
+                )
                 return ConversationHandler.END
 
             _message = f"[🖼️]({result['url']}) Gacha (>ワ<) [😼]({result['thumbnail']})"
